@@ -1,0 +1,12 @@
+{
+    "name": "montage-testing",
+
+    "version": "0.1.0",
+
+    "main": "run",
+
+    "dependencies": {
+        "montage": "0.12.x"
+    }
+}
+
