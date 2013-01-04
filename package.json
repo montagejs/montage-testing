@@ -6,7 +6,7 @@
     "main": "run",
 
     "dependencies": {
-        "montage": "0.12.x"
+        "montage": "~0.12.2"
     }
 }
 
