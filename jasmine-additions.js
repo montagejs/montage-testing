@@ -1,6 +1,3 @@
-if (document) {
-    jasmine.getEnv().addReporter(new jasmine.TrivialReporter());
-}
 
 queryString = function(parameter) {
     var i, key, value, equalSign;
