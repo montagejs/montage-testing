@@ -33,7 +33,8 @@ jasmine.TrivialReporter.prototype.createDom = function(type, attrs, childrenVarA
 };
 
 jasmine.TrivialReporter.prototype.reportRunnerStarting = function(runner) {
-    var showPassed, resetCount;
+
+    var showPassed;
 
     this.outerDiv = this.createDom('div', { className: 'jasmine_reporter' },
             this.createDom('div', { className: 'banner' },
@@ -49,7 +50,6 @@ jasmine.TrivialReporter.prototype.reportRunnerStarting = function(runner) {
 
             this.runnerDiv = this.createDom('div', { className: 'runner running' },
                     this.createDom('a', { className: 'run_spec', href: '?' }, "[run all]"),
-                    resetCount = this.createDom('a', { className: 'run_spec', href: '?' }, "[reset spec count]"),
                     this.runnerMessageSpan = this.createDom('span', {}, "Running..."),
                     this.finishedAtSpan = this.createDom('span', { className: 'finished-at' }, "")),
 
@@ -75,11 +75,7 @@ jasmine.TrivialReporter.prototype.reportRunnerStarting = function(runner) {
             self.outerDiv.className = self.outerDiv.className.replace(/ show-passed/, '');
         }
     };
-    resetCount.onclick = function(evt) {
-        localStorage.setItem("jasmine-totalSpecs", 0);
-    };
-
-
+    this.progress.max = runner.specs().length;
 };
 
 jasmine.TrivialReporter.prototype.createSuiteDiv = function(suite) {
@@ -108,31 +104,27 @@ jasmine.TrivialReporter.prototype.reportRunnerResults = function(runner) {
 
     var className = (results.failedCount > 0) ? "runner failed" : "runner passed";
     this.runnerDiv.setAttribute("class", className);
-    //do it twice for IE
+    //do it twice for IEs
     this.runnerDiv.setAttribute("className", className);
     var specs = runner.specs();
     var specCount = 0;
     for (var i = 0; i < specs.length; i++) {
-        if (this.specFilter(specs[i])) {
-            specCount++;
-        }
+      if (this.specFilter(specs[i])) {
+        specCount++;
+      }
     }
-
-    var totalSpecs = localStorage.getItem("jasmine-totalSpecs");
-
-    if (totalSpecs < specCount) {
-        totalSpecs = specCount;
-        localStorage.setItem("jasmine-totalSpecs", totalSpecs);
-    }
-    if (specCount == totalSpecs) {
+    if (specCount == specs.length) {
         this.progress.style.display = "none";
     }
-    this.progress.max = totalSpecs;
-    this.progress.value = specCount;
-    var message = "" + specCount + "/" + totalSpecs + " spec" + (specCount == 1 ? "" : "s" ) + ", " + results.failedCount + " failure" + ((results.failedCount == 1) ? "" : "s");
-    message += " in " + ((new Date().getTime() - this.startedAt.getTime()) / 1000) + "s";
+
+
+
+    var now = new Date();
+    var message = "" + specCount + " spec" + (specCount == 1 ? "" : "s" ) + ", " + results.failedCount + " failure" + ((results.failedCount == 1) ? "" : "s");
+    message += " in " + ((new Date().getTime() - this.startedAt.getTime()) / 1000) + "s @ " + now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds() ;
     this.runnerMessageSpan.replaceChild(this.createDom('a', { className: 'description', href: '?'}, message), this.runnerMessageSpan.firstChild);
-    this.finishedAtSpan.textContent = "Finished at " + new Date().toString();
+
+    this.finishedAtSpan.appendChild(document.createTextNode("Finished at " + now.toString()));
 };
 
 jasmine.TrivialReporter.prototype.reportSuiteResults = function(suite) {
@@ -145,10 +137,10 @@ jasmine.TrivialReporter.prototype.reportSuiteResults = function(suite) {
     if (!suiteDiv.classList.contains(status)) {
         suiteDiv.classList.add(status);
     }
-
 };
 
 jasmine.TrivialReporter.prototype.todoSpecCount = 0;
+jasmine.TrivialReporter.prototype.runSpecCount = 0;
 jasmine.TrivialReporter.prototype.adjustResults = function(results) {
     var newResults = {};
     newResults.failedCount = (results.failedCount ? results.failedCount : 0) - this.todoSpecCount;
@@ -167,10 +159,11 @@ jasmine.TrivialReporter.prototype.reportSpecResults = function(spec) {
     if (results.skipped) {
         status = 'skipped';
     }
+    this.runSpecCount++;
     var specTitle = spec.getFullName(),
         isTODO = spec.description.indexOf("TODO") === 0;
     if (isTODO) {
-        specTitle = specTitle.replace(spec.description, "<strong>" + spec.description.substring(5, spec.description.length) + "</strong>");
+        specTitle = specTitle.replace(spec.description, "<strong>" + spec.description.substring(5, spec.description.length) + " [TODO]</strong>");
     } else {
         specTitle = specTitle.replace(spec.description, "<strong>" + spec.description + "</strong>");
     }
@@ -189,7 +182,6 @@ jasmine.TrivialReporter.prototype.reportSpecResults = function(spec) {
             if (isTODO) {
                 //Unimplemented spec
                 this.todoSpecCount++;
-                messagesDiv.appendChild(this.createDom('div', {className: 'resultMessage todo'}, result.message));
             } else {
                 var message = result.message;
 
@@ -208,21 +200,21 @@ jasmine.TrivialReporter.prototype.reportSpecResults = function(spec) {
                     message += "<br/>" + stack.join("<br/>");
                 }
                 messagesDiv.appendChild(this.createDom('div', {className: 'resultMessage fail'}, message.replace("Expected", "Expected<br/>").replace("to be", "<br/>to be<br/>")));
+                if (result.trace.stack) {
+                    var blocks = spec.queue.blocks;
+                    var blockIndex = blocks.length,
+                    block;
+                    while (blockIndex--) {
+                        block = blocks[blockIndex];
+                        if (block.func) {
+                            break;
+                        }
+                    }
+                    var specFunction = block.func;
+                    messagesDiv.appendChild(this.createDom('div', {className: 'code'}, js_beautify(typeof specFunction === "function" ? specFunction.toString() : "").replace(/</, "&lt;").replace(/>/, "&gt;")));
+                }
             }
 
-            if (result.trace.stack) {
-                var blocks = spec.queue.blocks;
-                var blockIndex = blocks.length,
-                block;
-                while (blockIndex--) {
-                    block = blocks[blockIndex];
-                    if (block.func) {
-                        break;
-                    }
-                }
-                var specFunction = block.func;
-                messagesDiv.appendChild(this.createDom('div', {className: 'code'}, js_beautify(typeof specFunction === "function" ? specFunction.toString() : "").replace(/</, "&lt;").replace(/>/, "&gt;")));
-            }
         }
     }
 
@@ -234,6 +226,8 @@ jasmine.TrivialReporter.prototype.reportSpecResults = function(spec) {
         suiteDiv = this.createSuiteDiv(spec.suite);
     }
     suiteDiv.appendChild(specDiv);
+    this.progress.value = this.runSpecCount;
+
     document.body.scrollLeft = 0;
 };
 jasmine.TrivialReporter.prototype.loggerLoaded = false;
@@ -547,3 +541,5 @@ printStackTrace.implementation.prototype = {
         return result.join(',');
     }
 };
+
+jasmine.MAX_PRETTY_PRINT_DEPTH = 1;

@@ -130,7 +130,7 @@ body {
 
 .resultMessage span {
   display: block;
-  line-height: 2em;
+  line-height: 1.2em;
   color: black;
   padding-left: 4em;
 }
