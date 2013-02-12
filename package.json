@@ -1,12 +1,8 @@
 {
-    "name": "montage-testing",
-
-    "version": "0.1.1",
-
-    "main": "run",
-
-    "dependencies": {
-        "montage": "~0.12.2"
-    }
+  "name": "montage-testing",
+  "version": "0.1.2",
+  "main": "run",
+  "dependencies": {
+    "montage": "~0.12.2"
+  }
 }
-
