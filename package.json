@@ -3,6 +3,6 @@
   "version": "0.1.3",
   "main": "run",
   "dependencies": {
-    "montage": "git+ssh://git@github.com:montagejs/montage.git#edge"
+    "montage": "0.13.0-alpha"
   }
 }
