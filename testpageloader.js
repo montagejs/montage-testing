@@ -157,7 +157,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
             };
 
             if (!timeoutLength) {
-                timeoutLength = 2000;
+                timeoutLength = 5000;
             }
             var pageLoadTimeout = setTimeout(pageLoadTimedOut, timeoutLength);
 
