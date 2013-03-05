@@ -1,6 +1,9 @@
 {
   "name": "montage-testing",
   "version": "0.2.0-alpha",
+  "publishConfig": {
+    "tag": "edge"
+  },
   "main": "run",
   "dependencies": {
     "montage": "0.13.0-alpha"
