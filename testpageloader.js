@@ -202,6 +202,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                                     }
                                     firstDraw = false;
                                 }
+                                if (theTestPage._drawHappened) {
+                                    theTestPage._drawHappened();
+                                }
                             };
 
                             var pause = queryString("pause");
@@ -274,6 +277,31 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 this.iframe.src = "";
             }
             return this;
+        }
+    },
+
+    nextDraw: {
+        value: function(numDraws, forceDraw) {
+            var theTestPage = this,
+                deferred = Promise.defer();
+
+            this.drawHappened = false;
+
+            if (!numDraws) {
+                numDraws = 1;
+            }
+
+            theTestPage._drawHappened = function() {
+                if(theTestPage.drawHappened == numDraws) {
+                    deferred.resolve(numDraws);
+                    theTestPage._drawHappened = null;
+                }
+            }
+            if(forceDraw) {
+                var root = COMPONENT.__root__;
+                root['drawTree']();
+            }
+            return deferred.promise.timeout(1000);
         }
     },
 
