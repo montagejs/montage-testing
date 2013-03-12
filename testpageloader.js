@@ -2,7 +2,7 @@
  * @see https://developer.mozilla.org/en/DOM/HTMLIFrameElement
  */
 var Montage = require("montage").Montage;
-var dom = require("montage/ui/dom");
+var dom = require("montage/core/dom");
 var URL = require("montage/core/url");
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
 var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
@@ -75,6 +75,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 });
                 // add the rest of the assertions
                 options.callback(testPage);
+                it("should unload", function() {
+                   testPage.unloadTest();
+                });
             });
 
 
@@ -170,6 +173,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                     this.window.montageRequire.async("ui/component")
                     .then(function (COMPONENT) {
                         var root = COMPONENT.__root__;
+                        theTestPage.rootComponent = root;
                         // override the default drawIfNeeded behaviour
                         var originalDrawIfNeeded = root.drawIfNeeded;
                         root.drawIfNeeded = function() {
@@ -298,8 +302,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 }
             }
             if(forceDraw) {
-                var root = COMPONENT.__root__;
-                root['drawTree']();
+                this.rootComponent.drawTree();
             }
             return deferred.promise.timeout(1000);
         }
@@ -318,8 +321,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 return theTestPage.drawHappened == numDraws;
             }, "component drawing",1000);
             if(forceDraw) {
-                var root = COMPONENT.__root__;
-                root['drawTree']();
+                this.rootComponent.drawTree();
             }
         }
     },
@@ -345,8 +347,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 return component.draw.drawHappened == numDraws;
             }, "component drawing",1000);
             if(forceDraw) {
-                var root = COMPONENT.__root__;
-                root['drawTree']();
+                this.rootComponent.drawTree();
             }
         }
     },
