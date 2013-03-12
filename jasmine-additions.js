@@ -23,6 +23,18 @@ queryString = function(parameter) {
     return value;
 };
 
+function createJavaScriptContext() {
+    var iframe = document.createElement("iframe"),
+        context;
+
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+    context = iframe.contentWindow;
+    iframe.parentNode.removeChild(iframe);
+
+    return context;
+}
+
 var updateReporter = function() {
     var runner = jasmine.getEnv().currentRunner();
     runner.finishCallback();
@@ -99,7 +111,7 @@ jasmine.Block.prototype.execute = function (onComplete) {
         }, function (error) {
             spec.fail(error);
             onComplete();
-        });
+        }).timeout(10000);
     }
 };
 
