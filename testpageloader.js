@@ -67,10 +67,10 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
             options.directory = this.queueTest.caller.caller.arguments[2].directory;
 
 
-            describe("testpage " + testName, function() {
+            describe(testName, function() {
                 it("should load", function() {
-                   return testPage.loadTest(options).then(function(loaded) {
-                       expect(loaded).toBe(true);
+                   return testPage.loadTest(options).then(function(theTestPage) {
+                       expect(theTestPage.loaded).toBe(true);
                    });
                 });
                 // add the rest of the assertions
@@ -134,33 +134,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
 
             //kick off jasmine tests
             var resumeJasmineTests = function() {
-                //testCallback();
-                pageFirstDraw.resolve(true);
-//                var env = jasmine.getEnv();
-//                var currentSuite = env.currentSuite;
-//                if (currentSuite == null) {
-//                    currentSuite = env.currentSpec.suite;
-//                }
-//                var originalFinish = currentSuite.finish;
-//                currentSuite.finish = function() {
-//                    originalFinish.apply(currentSuite, arguments);
-//                    theTestPage.endTest(test);
-//                };
-//                var runner = jasmine.getEnv().currentRunner();
-//                runner.queue.start(function () {
-//                    runner.finishCallback();
-//                });
+                pageFirstDraw.resolve(theTestPage);
              };
 
             //set the timeout so that the jasmine suite runs if the pages fails to load.
             var pageLoadTimedOut = function() {
                 console.log("Page load timed out for test named: " + test.testName);
                 pageFirstDraw.reject("Page load timed out for test named: " + test.testName);
-                //resumeJasmineTests();
             };
 
             if (!timeoutLength) {
-                timeoutLength = 5000;
+                timeoutLength = 10000;
             }
             var pageLoadTimeout = setTimeout(pageLoadTimedOut, timeoutLength);
 
@@ -200,8 +184,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                                             // francois HACK
                                             // not sure how to deal with this
                                             // if at first draw the page isn't complete the tests will fail
-                                            // so we wait an arbitrary 1s for subsequent draws to happen...
-                                            setTimeout(resumeJasmineTests, 1000);
+                                            // so we wait an arbitrary 100ms for subsequent draws to happen...
+                                            setTimeout(resumeJasmineTests, 100);
                                         }
                                     }
                                     firstDraw = false;
