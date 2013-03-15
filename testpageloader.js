@@ -70,6 +70,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
             describe(testName, function() {
                 it("should load", function() {
                    return testPage.loadTest(options).then(function(theTestPage) {
+                       console.group(testName);
                        expect(theTestPage.loaded).toBe(true);
                    });
                 });
@@ -77,6 +78,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 options.callback(testPage);
                 it("should unload", function() {
                    testPage.unloadTest();
+                   console.groupEnd();
                 });
             });
 
