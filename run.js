@@ -13,7 +13,6 @@ exports.run = function( suiteRequire, modules ) {
             modules.forEach(suiteRequire);
             jasmine.getEnv().execute();
         }).then(function() {
-            console.warn("loaded");
             if (window.__testacular__) {
                 window.__testacular__.loaded();
             }

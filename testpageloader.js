@@ -49,27 +49,44 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
         value: false
     },
 
-    queueTest: {
-        value: function(testName, options, callback) {
-            var self = this;
-            console.log("TestPageLoader.queueTest() - " + testName);
-            var testPage = window.testpage;
-            if (!testPage) {
-                testPage = TestPageLoader.create().init();
-            }
+    options: {
+        value: function(testName, options) {
+            var callback = arguments[2];
             if (typeof options === "function") {
                 options = { callback: options};
             } else {
+                if (options == null) {
+                    options = {};
+                }
                 options.callback = callback;
             }
             options.testName = testName;
             // FIXME Hack to get current directory
-            options.directory = this.queueTest.caller.caller.arguments[2].directory;
+            options.directory = this.options.caller.caller.arguments[2].directory;
 
+            return options;
+        }
+    },
+
+    testPage: {
+        get: function() {
+            var testPage = window.testpage;
+            if (!testPage) {
+                testPage = TestPageLoader.create().init();
+            }
+            return testPage;
+        }
+    },
+
+    queueTest: {
+        value: function(testName, options, callback) {
+            console.log("TestPageLoader.queueTest() - " + testName);
+            testPage = TestPageLoader.testPage;
+            options = testPage.options(testName, options, callback);
 
             describe(testName, function() {
                 it("should load", function() {
-                   return testPage.loadTest(options).then(function(theTestPage) {
+                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
                        console.group(testName);
                        expect(theTestPage.loaded).toBe(true);
                    });
@@ -109,91 +126,59 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
     },
 
     loadTest: {
-        value: function(test) {
+        value: function(promiseForFrameLoad, test) {
             var pageFirstDraw = Promise.defer();
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
                 self = this,
                 src;
-            this.loaded = false;
-            if (test.src) {
-                src = "../test/" + test.src;
-            } else {
-                src = URL.resolve(test.directory, testName + ".html");
-            }
-            if (test.newWindow) {
-                this.testWindow = window.open(src, "test-window");
-                window.addEventListener("unload", function() {
-                    self.unloadTest(testName);
-                }, false);
-
-            } else {
-                this.iframe.src = src;
-            }
-
-            var theTestPage = this;
-
-            //kick off jasmine tests
-            var resumeJasmineTests = function() {
-                pageFirstDraw.resolve(theTestPage);
-             };
-
-            //set the timeout so that the jasmine suite runs if the pages fails to load.
-            var pageLoadTimedOut = function() {
-                console.log("Page load timed out for test named: " + test.testName);
-                pageFirstDraw.reject("Page load timed out for test named: " + test.testName);
-            };
 
             if (!timeoutLength) {
                 timeoutLength = 10000;
             }
-            var pageLoadTimeout = setTimeout(pageLoadTimedOut, timeoutLength);
 
+            this.loaded = false;
             //
-            var frameLoad = function() {
+            promiseForFrameLoad.then( function(frame) {
                 // implement global function that montage is looking for at load
                 // this is little bit ugly and I'd like to find a better solution
-                theTestPage.window.montageWillLoad = function() {
+                self.window.montageWillLoad = function() {
                     var firstDraw = true;
                     this.window.montageRequire.async("ui/component")
                     .then(function (COMPONENT) {
                         var root = COMPONENT.__root__;
-                        theTestPage.rootComponent = root;
+                        self.rootComponent = root;
                         // override the default drawIfNeeded behaviour
                         var originalDrawIfNeeded = root.drawIfNeeded;
                         root.drawIfNeeded = function() {
 
-
-
-
-                            if (pageLoadTimeout) {
-                                clearTimeout(pageLoadTimeout);
-                            }
                             var continueDraw = function() {
                                 originalDrawIfNeeded.call(root);
-                                theTestPage.drawHappened++;
+                                self.drawHappened++;
                                 if(firstDraw) {
-                                    theTestPage.loaded = true;
+                                    self.loaded = true;
                                     // assign the application delegate to test so that the convenience methods work
-                                    if (! theTestPage.window.test && theTestPage.window.document.application) {
-                                        theTestPage.window.test = theTestPage.window.document.application.delegate;
+                                    if (! self.window.test && self.window.document.application) {
+                                        self.window.test = self.window.document.application.delegate;
                                     }
                                     if (typeof testCallback === "function") {
                                         if (test.firstDraw) {
-                                            resumeJasmineTests();
+                                            pageFirstDraw.resolve(self);
                                         } else {
                                             // francois HACK
                                             // not sure how to deal with this
                                             // if at first draw the page isn't complete the tests will fail
                                             // so we wait an arbitrary 100ms for subsequent draws to happen...
-                                            setTimeout(resumeJasmineTests, 100);
+                                            setTimeout(function() {
+                                                pageFirstDraw.resolve(self);
+                                            }, 100);
                                         }
                                     }
                                     firstDraw = false;
                                 }
-                                if (theTestPage._drawHappened) {
-                                    theTestPage._drawHappened();
+                                if (self._drawHappened) {
+                                    self._drawHappened();
                                 }
                             };
 
@@ -201,24 +186,24 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                             if (firstDraw && decodeURIComponent(pause) === "true") {
                                 var handleKeyUp = function(event) {
                                     if (event.which === 82) {
-                                        theTestPage.document.removeEventListener("keyup", handleKeyUp,false);
+                                        self.document.removeEventListener("keyup", handleKeyUp,false);
                                         document.removeEventListener("keyup", handleKeyUp,false);
                                         continueDraw();
                                     }
                                 };
-                                theTestPage.document.addEventListener("keyup", handleKeyUp,false);
+                                self.document.addEventListener("keyup", handleKeyUp,false);
                                 document.addEventListener("keyup", handleKeyUp,false);
                             } else {
                                 continueDraw();
                             }
 
 
-                            theTestPage.willNeedToDraw = false;
+                            self.willNeedToDraw = false;
                         };
                         var originalAddToDrawList = root._addToDrawList;
                         root._addToDrawList = function(childComponent) {
                             originalAddToDrawList.call(root, childComponent);
-                            theTestPage.willNeedToDraw = true;
+                            self.willNeedToDraw = true;
                         };
 
                         defaultEventManager = null;
@@ -230,29 +215,50 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
 
                     })
                     .done();
-
-
                 };
-                if (theTestPage.testWindow) {
-                    theTestPage.testWindow.removeEventListener("load", frameLoad, true);
-                } else {
-                    theTestPage.iframe.removeEventListener("load", frameLoad, true);
-                }
+            });
 
-            };
-            if (this.testWindow) {
-                this.testWindow.addEventListener("load", frameLoad, true);
-            } else {
-                this.iframe.addEventListener("load", frameLoad, true);
-            }
 
-            return pageFirstDraw.promise
+            var promiseForTestPage = pageFirstDraw.promise.timeout(timeoutLength);
+            return promiseForTestPage
+                .then(function(self) {
+                    return self;
+                })
+                .fail(function(reason) {
+                    console.error(testName + " - " + reason.message);
+                    return self;
+                })
          }
     },
 
-    load: {
-        value: function(event) {
-
+    loadFrame: {
+        value: function(options) {
+            var self = this, src;
+            var frameLoad = Promise.defer();
+            var callback = function() {
+                frameLoad.resolve(self.window);
+                if (self.testWindow) {
+                    self.testWindow.removeEventListener("load", callback, true);
+                } else {
+                    self.iframe.removeEventListener("load", callback, true);
+                }
+            }
+            if (options.src) {
+                src = "../test/" + options.src;
+            } else {
+                src = URL.resolve(options.directory, options.testName + ".html");
+            }
+            if (options.newWindow) {
+                self.testWindow = window.open(src, "test-window");
+                window.addEventListener("unload", function() {
+                    self.unloadTest(testName);
+                }, false);
+                self.testWindow.addEventListener("load", callback, true);
+            } else {
+                self.iframe.src = src;
+                self.iframe.addEventListener("load", callback, true);
+            }
+            return frameLoad.promise;
         }
     },
 
