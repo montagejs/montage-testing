@@ -31,11 +31,19 @@ POSSIBILITY OF SUCH DAMAGE.
 var Montage = require("montage").Montage;
 
 exports.TestController = Montage.create(Montage, {
+    templateObjects: {
+        value: null
+    },
 
     didCreate:{
         value:function () {
             window.test = this;
         }
-    }
+    },
 
+    deserializedFromTemplate: {
+        value: function(owner, label, part) {
+            this.templateObjects = part.objects;
+        }
+    }
 });
