@@ -1,3 +1,4 @@
+/*global jasmine, queryString */
 var Promise = require("montage/core/promise").Promise;
 
 exports.run = function( suiteRequire, modules ) {
@@ -16,6 +17,6 @@ exports.run = function( suiteRequire, modules ) {
             if (window.__testacular__) {
                 window.__testacular__.loaded();
             }
-        });
+        }).done();
     }
-}
+};
