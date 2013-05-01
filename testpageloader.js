@@ -86,8 +86,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
 
             describe(testName, function() {
                 it("should load", function() {
+                   console.group(testName);
                    return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
-                       console.group(testName);
                        expect(theTestPage.loaded).toBe(true);
                    });
                 });
@@ -502,20 +502,29 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
             }
             var doc = this.document,
                 simulatedEvent = doc.createEvent("CustomEvent"),
+                touch;
+
+
+            if (typeof eventInfo.touches !== "undefined") {
+                // if you have a touches array we assume you know what you are doing
+                simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
+                simulatedEvent.touches = eventInfo.touches;
+                simulatedEvent.targetTouches = eventInfo.targetTouches;
+                simulatedEvent.changedTouches = eventInfo.changedTouches;
+            } else {
                 touch = {};
+                touch.clientX = eventInfo.clientX || eventInfo.target.offsetLeft;
+                touch.clientY = eventInfo.clientY || eventInfo.target.offsetTop;
+                touch.target = eventInfo.target;
+                touch.identifier = eventInfo.identifier || 500;
+                simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
+                simulatedEvent.touches = [touch];
+                simulatedEvent.targetTouches = [touch];
+                simulatedEvent.changedTouches = [touch];
+            }
 
-            eventInfo.clientX = eventInfo.clientX || eventInfo.target.offsetLeft;
-            eventInfo.clientY = eventInfo.clientY || eventInfo.target.offsetTop;
 
-            touch.clientX = eventInfo.clientX;
-            touch.clientY = eventInfo.clientY;
-            touch.target = eventInfo.target;
-            touch.identifier = 500;
-
-            simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
-            simulatedEvent.touches = [touch];
-            simulatedEvent.changedTouches = [touch];
-                eventInfo.target.dispatchEvent(simulatedEvent);
+            eventInfo.target.dispatchEvent(simulatedEvent);
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
@@ -554,14 +563,27 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
 
     dragElementOffsetTo: {
         enumerable: false,
-        value: function(element, offsetX, offsetY, downCallback, moveCallback, upCallback) {
+        value: function(element, offsetX, offsetY, startCallback, moveCallback, endCallback, options) {
             var self = this;
+            var startEventName = "mousedown";
+            var moveEventName = "mousemove";
+            var endEventName = "mouseup";
+            var eventFactoryName = "mouseEvent";
+
+            if (options) {
+                if(options.pointerType === "touch" || window.Touch) {
+                    startEventName = "touchstart";
+                    moveEventName = "touchmove";
+                    endEventName = "touchend";
+                    eventFactoryName = "touchEvent";
+                }
+            }
 
             // mousedown
-            self.mouseEvent({target: element}, "mousedown");
+            self.mouseEvent({target: element}, startEventName);
 
-            if (downCallback) {
-                downCallback();
+            if (startCallback) {
+                startCallback();
             }
 
             // Mouse move doesn't happen instantly
@@ -573,29 +595,149 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                 by = element.offsetTop + offsetY;
 
                 // Do two moves to be slightly realistic
-                self.mouseEvent({
+                self[eventFactoryName]({
                     target: element,
                     clientX: ax,
                     clientY: ay
-                }, "mousemove");
+                }, moveEventName);
 
-                var eventInfo = self.mouseEvent({
+                var eventInfo = self[eventFactoryName]({
                     target: element,
                     clientX: bx,
                     clientY: by
-                }, "mousemove");
+                }, moveEventName);
 
                 if (moveCallback) {
                     moveCallback();
                 }
 
                 // mouse up
-                self.mouseEvent(eventInfo, "mouseup");
+                self[eventFactoryName](eventInfo, endEventName);
 
-                if (upCallback) {
-                    upCallback();
+                if (endCallback) {
+                    endCallback();
                 }
             });
+        }
+    },
+
+    fireEventsOnTimeline: {
+        value: function(timeline, callback) {
+            var i, j, stepKey;
+            for (i = 0; i < timeline.length; i++) {
+                var line = timeline[i];
+                // keep initial values that we increment later
+                var clientX = line.target.offsetLeft;
+                var clientY = line.target.offsetTop;
+                for (j = 0; j < line.steps.length; j++) {
+                    var step = line.steps[j];
+                    var time = step.time;
+                    delete step.time;
+                    var eventInfo = {
+                        type: line.type,
+                        target: line.target,
+                        identifier: line.identifier
+                    };
+                    for (stepKey in step) {
+                        if(stepKey.indexOf(line.type) !== -1) {
+                            eventInfo.eventType = stepKey;
+                            var typeInfo = step[stepKey];
+                            if (typeInfo) {
+                                eventInfo.clientX = clientX = clientX + typeInfo.dx;
+                                eventInfo.clientY = clientY = clientY + typeInfo.dy;
+                            }
+                        } else {
+                            eventInfo[key] = step[stepKey];
+                        }
+                    }
+                    console.log("_scheduleEventForTime", eventInfo)
+                    this._scheduleEventForTime(eventInfo, time, callback);
+                }
+            }
+        }
+    },
+
+    _nextStepTime: {
+        value: 0
+    },
+
+    _eventsInOrder: {
+        value: null
+    },
+
+    _scheduleEventForTime: {
+        value: function(eventInfo, t, callback) {
+            var self = this;
+            if(!self._eventsInOrder) {
+                self._eventsInOrder = [];
+                self._touchesInProgress = [];
+                var foo = function() {
+                    waits(10);
+                    runs(function() {
+                        console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                        var events = self._eventsInOrder[self._nextStepTime];
+                        while(!events || self._eventsInOrder.length === self._nextStepTime) {
+                            self._nextStepTime++;
+                            console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                            events = self._eventsInOrder[self._nextStepTime];
+                        }
+                        self._dispatchScheduledEvents(events);
+                        callback(self._nextStepTime);
+                        self._nextStepTime++;
+                        if(self._eventsInOrder.length > self._nextStepTime) {
+                            // while we have more events in the time line keep going.
+                            foo();
+                        }
+                    });
+                };
+                foo();
+            }
+            if(self._eventsInOrder[t]) {
+                self._eventsInOrder[t].push(eventInfo);
+            } else {
+                self._eventsInOrder[t] = [eventInfo];
+            }
+        }
+    },
+
+    _touchesInProgress: {
+        value: null
+    },
+    
+    _dispatchScheduledEvents: {
+        value: function(eventFragments) {
+            var i, eventInfos = {}, eventInfo;
+            for (i = 0; i < eventFragments.length; i++) {
+                var pointer = eventFragments[i];
+                if(pointer.type === "touch") {
+                    if(pointer.eventType === "touchstart") {
+                        this._touchesInProgress.push(pointer);
+                    } else if(pointer.typeName === "touchend") {
+                        this._touchesInProgress.splice(this._touchesInProgress.indexOf(pointer),1);
+                    }
+                    if(eventInfo = eventInfos[pointer.eventType]) {
+                        // if the event is already initialized all we need to do is add to the changedTouches.
+                        eventInfo.changedTouches.push(pointer);
+                    } else {
+                        eventInfo = {};
+                        eventInfo.target = pointer.target;
+                        eventInfo.changedTouches = [pointer];
+                        eventInfos[pointer.eventType] = eventInfo;
+                    }
+                } else {
+                    // mouse event
+                    this.mouseEvent(pointer, pointer.eventType);
+                }
+
+            };
+             // at the end we know all the touches
+            for(var eventType in eventInfos) {
+                eventInfo = eventInfos[eventType];
+                eventInfo.touches = this._touchesInProgress;
+                // this is not strictly correct
+                eventInfo.targetTouches = eventInfo.changedTouches;
+                this.touchEvent(eventInfo, eventType);
+            }
         }
     },
 
