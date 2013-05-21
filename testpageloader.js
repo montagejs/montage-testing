@@ -62,7 +62,15 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
             }
             options.testName = testName;
             // FIXME Hack to get current directory
-            options.directory = this.options.caller.caller.arguments[2].directory;
+            var dir;
+            if (this.options.caller.caller.arguments
+                    && this.options.caller.caller.arguments[2]
+                    && this.options.caller.caller.arguments[2].directory) {
+                dir = this.options.caller.caller.arguments[2].directory
+            } else {
+                dir = this.options.caller.caller.caller.arguments[2].directory
+            }
+            options.directory = dir;
 
             return options;
         }
@@ -728,9 +736,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
                     // mouse event
                     this.mouseEvent(pointer, pointer.eventType);
                 }
-
-            };
-             // at the end we know all the touches
+            }
+            // at the end we know all the touches
             for(var eventType in eventInfos) {
                 eventInfo = eventInfos[eventType];
                 eventInfo.touches = this._touchesInProgress;
