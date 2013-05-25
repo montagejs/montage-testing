@@ -30,12 +30,12 @@ POSSIBILITY OF SUCH DAMAGE.
 </copyright> */
 var Montage = require("montage").Montage;
 
-exports.TestController = Montage.create(Montage, {
+exports.TestController = Montage.specialize( {
     templateObjects: {
         value: null
     },
 
-    didCreate:{
+    constructor:{
         value:function () {
             window.test = this;
         }

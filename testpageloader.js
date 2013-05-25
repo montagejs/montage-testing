@@ -10,7 +10,7 @@ var Promise = require("montage/core/promise").Promise;
 var defaultEventManager;
 
 
-var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
+var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     init: {
         enumerable: false,
         value: function() {
@@ -47,70 +47,6 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
 
     loading: {
         value: false
-    },
-
-    options: {
-        value: function(testName, options) {
-            var callback = arguments[2];
-            if (typeof options === "function") {
-                options = { callback: options};
-            } else {
-                if (options == null) {
-                    options = {};
-                }
-                options.callback = callback;
-            }
-            options.testName = testName;
-            // FIXME Hack to get current directory
-            var dir;
-            if (this.options.caller.caller.arguments
-                    && this.options.caller.caller.arguments[2]
-                    && this.options.caller.caller.arguments[2].directory) {
-                dir = this.options.caller.caller.arguments[2].directory
-            } else {
-                dir = this.options.caller.caller.caller.arguments[2].directory
-            }
-            options.directory = dir;
-
-            return options;
-        }
-    },
-
-    testPage: {
-        get: function() {
-            var testPage = window.testpage;
-            if (!testPage) {
-                testPage = TestPageLoader.create().init();
-            }
-            return testPage;
-        }
-    },
-
-    queueTest: {
-        value: function(testName, options, callback) {
-            console.log("TestPageLoader.queueTest() - " + testName);
-            testPage = TestPageLoader.testPage;
-            options = testPage.options(testName, options, callback);
-
-            describe(testName, function() {
-                it("should load", function() {
-                   console.group(testName);
-                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
-                       expect(theTestPage.loaded).toBe(true);
-                   });
-                });
-                // add the rest of the assertions
-                options.callback(testPage);
-                it("should unload", function() {
-                   testPage.unloadTest();
-                   console.groupEnd();
-                });
-            });
-
-
-            //testPage.testQueue.push(options);
-            //return testPage;
-        }
     },
 
     endTest: {
@@ -815,9 +751,74 @@ var TestPageLoader = exports.TestPageLoader = Montage.create(Montage, {
     testWindow: {
         value: null
     }
+}, {
+
+    queueTest: {
+        value: function(testName, options, callback) {
+            console.log("TestPageLoader.queueTest() - " + testName);
+            testPage = TestPageLoader.testPage;
+            options = TestPageLoader.options(testName, options, callback);
+
+            describe(testName, function() {
+                it("should load", function() {
+                   console.group(testName);
+                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
+                       expect(theTestPage.loaded).toBe(true);
+                   });
+                });
+                // add the rest of the assertions
+                options.callback(testPage);
+                it("should unload", function() {
+                   testPage.unloadTest();
+                   console.groupEnd();
+                });
+            });
+
+
+            //testPage.testQueue.push(options);
+            //return testPage;
+        }
+    },
+
+    options: {
+        value: function(testName, options) {
+            var callback = arguments[2];
+            if (typeof options === "function") {
+                options = { callback: options};
+            } else {
+                if (options == null) {
+                    options = {};
+                }
+                options.callback = callback;
+            }
+            options.testName = testName;
+            // FIXME Hack to get current directory
+            var dir;
+            if (this.options.caller.caller.arguments
+                    && this.options.caller.caller.arguments[2]
+                    && this.options.caller.caller.arguments[2].directory) {
+                dir = this.options.caller.caller.arguments[2].directory
+            } else {
+                dir = this.options.caller.caller.caller.arguments[2].directory
+            }
+            options.directory = dir;
+
+            return options;
+        }
+    },
+
+    testPage: {
+        get: function() {
+            var testPage = window.testpage;
+            if (!testPage) {
+                testPage = TestPageLoader.create().init();
+            }
+            return testPage;
+        }
+    }
 });
 
-var EventInfo = exports.EventInfo = Montage.create(Montage, {
+var EventInfo = exports.EventInfo = Montage.specialize( {
 
     target: {
         value: null
