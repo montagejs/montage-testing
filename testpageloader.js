@@ -446,8 +446,14 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
             var doc = this.document,
                 simulatedEvent = doc.createEvent("CustomEvent"),
-                touch;
-
+                fakeEvent,
+                event,
+                touch,
+                eventManager,
+                // We need to dispatch a fake event through the event manager
+                // to fake the timestamp because it's not possible to modify
+                // the timestamp of an event.
+                dispatchThroughEventManager = eventInfo.timeStamp != null;
 
             if (typeof eventInfo.touches !== "undefined") {
                 // if you have a touches array we assume you know what you are doing
@@ -467,8 +473,14 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 simulatedEvent.changedTouches = [touch];
             }
 
+            if (dispatchThroughEventManager) {
+                fakeEvent = this._createFakeEvent(simulatedEvent, eventInfo);
+                eventManager = this.window.require("montage/ui/component").__root__.eventManager;
+                eventManager.handleEvent(fakeEvent);
+            } else {
+                eventInfo.target.dispatchEvent(simulatedEvent);
+            }
 
-            eventInfo.target.dispatchEvent(simulatedEvent);
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
@@ -478,6 +490,37 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 }
             }
             return eventInfo;
+        }
+    },
+
+    _createFakeEvent: {
+        value: function(event, fakeProperties) {
+            var fakeEvent;
+
+            fakeEvent = Object.create(event);
+            Object.defineProperty(fakeEvent, "timeStamp", {
+                value: fakeProperties.timeStamp
+            });
+            Object.defineProperty(fakeEvent, "target", {
+                value: fakeProperties.target
+            });
+            Object.defineProperty(fakeEvent, "preventDefault", {
+                value: function(){
+                    return event.preventDefault();
+                }
+            });
+            Object.defineProperty(fakeEvent, "stopPropagation", {
+                value: function(){
+                    return event.stopPropagation();
+                }
+            });
+            Object.defineProperty(fakeEvent, "stopImmediatePropagation", {
+                value: function(){
+                    return event.stopImmediatePropagation();
+                }
+            });
+
+            return fakeEvent;
         }
     },
 
