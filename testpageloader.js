@@ -625,6 +625,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         target: line.target,
                         identifier: line.identifier
                     };
+                    if (line.fakeTimeStamp) {
+                        eventInfo.timeStamp = time;
+                    }
                     for (stepKey in step) {
                         if(stepKey.indexOf(line.type) !== -1) {
                             eventInfo.eventType = stepKey;
@@ -632,12 +635,15 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             if (typeInfo) {
                                 eventInfo.clientX = clientX = clientX + typeInfo.dx;
                                 eventInfo.clientY = clientY = clientY + typeInfo.dy;
+                            } else {
+                                eventInfo.clientX = clientX;
+                                eventInfo.clientY = clientY;
                             }
                         } else {
                             eventInfo[key] = step[stepKey];
                         }
                     }
-                    console.log("_scheduleEventForTime", eventInfo)
+                    console.log("_scheduleEventForTime", eventInfo);
                     this._scheduleEventForTime(eventInfo, time, callback);
                 }
             }
@@ -715,6 +721,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     } else {
                         eventInfo = {};
                         eventInfo.target = pointer.target;
+                        eventInfo.timeStamp = pointer.timeStamp;
                         eventInfo.changedTouches = [pointer];
                         eventInfos[pointer.eventType] = eventInfo;
                     }
