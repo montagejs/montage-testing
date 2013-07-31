@@ -631,6 +631,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         if(self._eventsInOrder.length > self._nextStepTime) {
                             // while we have more events in the time line keep going.
                             foo();
+                        } else {
+                            self._eventsInOrder = null;
+                            self._nextStepTime = 0;
                         }
                     });
                 };
