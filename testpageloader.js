@@ -661,12 +661,16 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 var foo = function() {
                     waits(10);
                     runs(function() {
-                        console.log("********** nextStepTime:" + self._nextStepTime + " **********");
                         var events = self._eventsInOrder[self._nextStepTime];
+                        if (events) {
+                            console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                        }
                         while(!events || self._eventsInOrder.length === self._nextStepTime) {
                             self._nextStepTime++;
-                            console.log("********** nextStepTime:" + self._nextStepTime + " **********");
                             events = self._eventsInOrder[self._nextStepTime];
+                            if (events) {
+                                console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                            }
                         }
                         self._dispatchScheduledEvents(events);
                         callback(self._nextStepTime);
