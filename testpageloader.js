@@ -254,7 +254,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             waitsFor(function() {
-                return theTestPage.drawHappened == numDraws;
+                return theTestPage.drawHappened >= numDraws;
             }, "component drawing",1000);
             if(forceDraw) {
                 this.rootComponent.drawTree();
@@ -647,7 +647,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     _touchesInProgress: {
         value: null
     },
-    
+
     _dispatchScheduledEvents: {
         value: function(eventFragments) {
             var i, eventInfos = {}, eventInfo;
