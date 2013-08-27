@@ -409,6 +409,29 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         }
     },
 
+    wheelEvent: {
+        enumerable: false,
+        value: function(eventInfo, eventName, callback) {
+            var doc = this.iframe.contentDocument,
+                event = doc.createEvent("CustomEvent");
+
+            event.initEvent(eventName, true, true);
+            event.wheelDeltaY = eventInfo.wheelDeltaY;
+            event.deltaY = eventInfo.deltaY;
+            eventInfo.target.dispatchEvent(event);
+
+            if (typeof callback === "function") {
+                if(this.willNeedToDraw) {
+                    this.waitForDraw();
+                    runs(callback);
+                } else {
+                    callback();
+                }
+            }
+            return eventInfo;
+        }
+    },
+
     mouseEvent: {
         enumerable: false,
         value: function(eventInfo, eventName, callback) {
