@@ -469,8 +469,14 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
             var doc = this.document,
                 simulatedEvent = doc.createEvent("CustomEvent"),
-                touch;
-
+                fakeEvent,
+                event,
+                touch,
+                eventManager,
+                // We need to dispatch a fake event through the event manager
+                // to fake the timestamp because it's not possible to modify
+                // the timestamp of an event.
+                dispatchThroughEventManager = eventInfo.timeStamp != null;
 
             if (typeof eventInfo.touches !== "undefined") {
                 // if you have a touches array we assume you know what you are doing
@@ -490,8 +496,14 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 simulatedEvent.changedTouches = [touch];
             }
 
+            if (dispatchThroughEventManager) {
+                fakeEvent = this._createFakeEvent(simulatedEvent, eventInfo);
+                eventManager = this.window.require("montage/ui/component").__root__.eventManager;
+                eventManager.handleEvent(fakeEvent);
+            } else {
+                eventInfo.target.dispatchEvent(simulatedEvent);
+            }
 
-            eventInfo.target.dispatchEvent(simulatedEvent);
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
@@ -501,6 +513,37 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 }
             }
             return eventInfo;
+        }
+    },
+
+    _createFakeEvent: {
+        value: function(event, fakeProperties) {
+            var fakeEvent;
+
+            fakeEvent = Object.create(event);
+            Object.defineProperty(fakeEvent, "timeStamp", {
+                value: fakeProperties.timeStamp
+            });
+            Object.defineProperty(fakeEvent, "target", {
+                value: fakeProperties.target
+            });
+            Object.defineProperty(fakeEvent, "preventDefault", {
+                value: function(){
+                    return event.preventDefault();
+                }
+            });
+            Object.defineProperty(fakeEvent, "stopPropagation", {
+                value: function(){
+                    return event.stopPropagation();
+                }
+            });
+            Object.defineProperty(fakeEvent, "stopImmediatePropagation", {
+                value: function(){
+                    return event.stopImmediatePropagation();
+                }
+            });
+
+            return fakeEvent;
         }
     },
 
@@ -605,6 +648,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         target: line.target,
                         identifier: line.identifier
                     };
+                    if (line.fakeTimeStamp) {
+                        eventInfo.timeStamp = time;
+                    }
                     for (stepKey in step) {
                         if(stepKey.indexOf(line.type) !== -1) {
                             eventInfo.eventType = stepKey;
@@ -612,12 +658,15 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             if (typeInfo) {
                                 eventInfo.clientX = clientX = clientX + typeInfo.dx;
                                 eventInfo.clientY = clientY = clientY + typeInfo.dy;
+                            } else {
+                                eventInfo.clientX = clientX;
+                                eventInfo.clientY = clientY;
                             }
                         } else {
                             eventInfo[key] = step[stepKey];
                         }
                     }
-                    console.log("_scheduleEventForTime", eventInfo)
+                    console.log("_scheduleEventForTime", eventInfo);
                     this._scheduleEventForTime(eventInfo, time, callback);
                 }
             }
@@ -641,12 +690,16 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 var foo = function() {
                     waits(10);
                     runs(function() {
-                        console.log("********** nextStepTime:" + self._nextStepTime + " **********");
                         var events = self._eventsInOrder[self._nextStepTime];
+                        if (events) {
+                            console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                        }
                         while(!events || self._eventsInOrder.length === self._nextStepTime) {
                             self._nextStepTime++;
-                            console.log("********** nextStepTime:" + self._nextStepTime + " **********");
                             events = self._eventsInOrder[self._nextStepTime];
+                            if (events) {
+                                console.log("********** nextStepTime:" + self._nextStepTime + " **********");
+                            }
                         }
                         self._dispatchScheduledEvents(events);
                         callback(self._nextStepTime);
@@ -654,6 +707,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         if(self._eventsInOrder.length > self._nextStepTime) {
                             // while we have more events in the time line keep going.
                             foo();
+                        } else {
+                            self._eventsInOrder = null;
+                            self._nextStepTime = 0;
                         }
                     });
                 };
@@ -688,6 +744,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     } else {
                         eventInfo = {};
                         eventInfo.target = pointer.target;
+                        eventInfo.timeStamp = pointer.timeStamp;
                         eventInfo.changedTouches = [pointer];
                         eventInfos[pointer.eventType] = eventInfo;
                     }
