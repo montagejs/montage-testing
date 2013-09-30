@@ -1326,11 +1326,11 @@ jasmine.Matchers.prototype.toBeNull = function() {
  * Matcher that compares the actual to NaN.
  */
 jasmine.Matchers.prototype.toBeNaN = function() {
-	this.message = function() {
-		return [ "Expected " + jasmine.pp(this.actual) + " to be NaN." ];
-	};
+  this.message = function() {
+    return [ "Expected " + jasmine.pp(this.actual) + " to be NaN." ];
+  };
 
-	return (this.actual !== this.actual);
+  return (this.actual !== this.actual);
 };
 
 /**
@@ -1927,7 +1927,7 @@ jasmine.PrettyPrinter.prototype.format = function(value) {
 
 jasmine.PrettyPrinter.prototype.iterateObject = function(obj, fn) {
   for (var property in obj) {
-    if (!Object.hasOwnProperty.call(obj, property)) continue;
+    if (!obj.hasOwnProperty(property)) continue;
     if (property == '__Jasmine_been_here_before__') continue;
     fn(property, obj.__lookupGetter__ ? (obj.__lookupGetter__(property) !== jasmine.undefined && 
                                          obj.__lookupGetter__(property) !== null) : false);
