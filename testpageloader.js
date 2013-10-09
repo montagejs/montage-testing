@@ -9,6 +9,9 @@ var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
 var Promise = require("montage/core/promise").Promise;
 var defaultEventManager;
 
+if (!console.group) {
+    console.group = console.groupEnd = console.log;
+}
 
 var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     init: {
