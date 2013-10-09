@@ -368,7 +368,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             var doc = this.iframe.contentDocument,
                 mofifiers = eventInfo.modifiers.split(" "),
-                    event = {
+                event = {
                     altGraphKey: false,
                     altKey: mofifiers.indexOf("alt") !== -1,
                     bubbles: true,
@@ -387,6 +387,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     metaKey: mofifiers.indexOf("meta") !== -1,
                     pageX: 0,
                     pageY: 0,
+                    preventDefault: Function.noop,
                     returnValue: true,
                     shiftKey: mofifiers.indexOf("shift") !== -1,
                     srcElement: eventInfo.target,
