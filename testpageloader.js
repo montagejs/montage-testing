@@ -399,7 +399,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     },
                 targettedEvent = MutableEvent.fromEvent(event);
 
-            defaultEventManager.handleEvent(targettedEvent);
+            eventInfo.target.dispatchEvent(targettedEvent);
 
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
@@ -475,12 +475,11 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 simulatedEvent = doc.createEvent("CustomEvent"),
                 fakeEvent,
                 event,
-                touch,
-                eventManager,
-                // We need to dispatch a fake event through the event manager
-                // to fake the timestamp because it's not possible to modify
-                // the timestamp of an event.
-                dispatchThroughEventManager = eventInfo.timeStamp != null;
+                touch;
+
+            if (eventInfo.timeStamp) {
+                Montage.callDeprecatedFunction("testPageLoader#touchEvent", null, "supplying timeStamp is no longer supported");
+            }
 
             if (typeof eventInfo.touches !== "undefined") {
                 // if you have a touches array we assume you know what you are doing
@@ -500,13 +499,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 simulatedEvent.changedTouches = [touch];
             }
 
-            if (dispatchThroughEventManager) {
-                fakeEvent = this._createFakeEvent(simulatedEvent, eventInfo);
-                eventManager = this.window.require("montage/ui/component").__root__.eventManager;
-                eventManager.handleEvent(fakeEvent);
-            } else {
-                eventInfo.target.dispatchEvent(simulatedEvent);
-            }
+            eventInfo.target.dispatchEvent(simulatedEvent);
 
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
