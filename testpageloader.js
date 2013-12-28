@@ -14,9 +14,9 @@ if (!console.group) {
 }
 
 var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
-    init: {
-        enumerable: false,
-        value: function() {
+
+    constructor: {
+        value: function TestPageLoader() {
             if (typeof window.testpage === "undefined") {
                 if (!this.iframe) {
                     this.iframe = document.createElement("iframe");
@@ -895,7 +895,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         get: function() {
             var testPage = window.testpage;
             if (!testPage) {
-                testPage = TestPageLoader.create().init();
+                testPage = new TestPageLoader();
             }
             return testPage;
         }

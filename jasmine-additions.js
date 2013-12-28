@@ -138,3 +138,16 @@ beforeEach(function() {
         }
     })
 });
+
+var expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, global, logLevel) {
+    logLevel = logLevel ? logLevel : "log";
+    global = global ? global : window;
+    var old = global.console[logLevel];
+    var spy = jasmine.createSpy(logLevel + "-spy");
+
+    global.console[logLevel] = spy;
+    procedure();
+    global.console[logLevel] = old;
+
+    return expect(spy);
+};
