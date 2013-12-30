@@ -25,11 +25,15 @@ queryString = function(parameter) {
 
 function createJavaScriptContext() {
     var iframe = document.createElement("iframe"),
-        context;
+        context = {};
 
     iframe.style.display = "none";
     document.body.appendChild(iframe);
-    context = iframe.contentWindow;
+    ["Object", "String", "Number", "RegExp", "Array", "Boolean"]
+    .forEach(function (key) {
+        context[key] = iframe.contentWindow[key];
+    });
+    context.document = iframe.contentDocument;
     iframe.parentNode.removeChild(iframe);
 
     return context;
