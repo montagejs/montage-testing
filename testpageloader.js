@@ -3,7 +3,7 @@
  */
 var Montage = require("montage").Montage;
 var dom = require("montage/core/dom");
-var URL = require("montage/core/url");
+var URL = require("montage/core/mini-url");
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
 var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
 var Promise = require("montage/core/promise").Promise;
