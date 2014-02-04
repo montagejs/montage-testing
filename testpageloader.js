@@ -3,7 +3,6 @@
  */
 var Montage = require("montage").Montage;
 var dom = require("montage/core/dom");
-var URL = require("montage/core/url");
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
 var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
 var Promise = require("montage/core/promise").Promise;
@@ -174,7 +173,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 .fail(function(reason) {
                     console.error(testName + " - " + reason.message);
                     return self;
-                })
+                });
          }
     },
 
@@ -189,11 +188,11 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 } else {
                     self.iframe.removeEventListener("load", callback, true);
                 }
-            }
+            };
             if (options.src) {
                 src = "../test/" + options.src;
             } else {
-                src = URL.resolve(options.directory, options.testName + ".html");
+                src = options.directory + options.testName + ".html";
             }
             if (options.newWindow) {
                 self.testWindow = window.open(src, "test-window");
