@@ -3,7 +3,7 @@ Montage Testing
 
 MontageJS uses some pure unit tests that are straightforward [Jasmine specs][1].
 
- To install the test code, run `npm install` in your project folder. This installs the
+ To install the test code, run `npm install` in your project folder. This installs
  the [montage-testing][2] package, which adds some useful utilities for writing
  jasmine tests. You will need the file run-tests.html.
 
