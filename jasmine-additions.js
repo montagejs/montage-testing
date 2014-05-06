@@ -115,7 +115,12 @@ jasmine.Block.prototype.execute = function (onComplete) {
         }, function (error) {
             spec.fail(error);
             onComplete();
-        }).timeout(10000);
+        })
+        .timeout(10000)
+        .fail(function (error) {
+            spec.fail(error);
+            onComplete();
+        });
     }
 };
 
