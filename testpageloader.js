@@ -91,7 +91,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 // this is little bit ugly and I'd like to find a better solution
                 self.window.montageWillLoad = function() {
                     var firstDraw = true;
-                    this.window.montageRequire.async("ui/component")
+                    self.require.async("montage/ui/component")
                     .then(function (COMPONENT) {
                         var root = COMPONENT.__root__;
                         self.rootComponent = root;
@@ -105,8 +105,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 if(firstDraw) {
                                     self.loaded = true;
                                     // assign the application delegate to test so that the convenience methods work
-                                    if (! self.window.test && self.window.require("montage/core/application").application) {
-                                        self.window.test = self.window.require("montage/core/application").application.delegate;
+                                    if (! self.window.test && self.require("montage/core/application").application) {
+                                        self.window.test = self.require("montage/core/application").application.delegate;
                                     }
                                     if (typeof testCallback === "function") {
                                         if (test.firstDraw) {
@@ -154,7 +154,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
                         defaultEventManager = null;
 
-                        return this.window.montageRequire.async("core/event/event-manager")
+                        return self.require.async("core/event/event-manager")
                         .then(function (exports) {
                             defaultEventManager = exports.defaultEventManager;
                         });
@@ -338,6 +338,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         }
     },
 
+    require: {
+        get: function() {
+            // Handle transition period from `require` to `mr`.
+            return this.window.mr || this.window.require;
+        }
+    },
+
     addListener: {
         value: function(component, fn, type) {
             type = type || "action";
@@ -501,7 +508,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             if (dispatchThroughEventManager) {
                 fakeEvent = this._createFakeEvent(simulatedEvent, eventInfo);
-                eventManager = this.window.require("montage/ui/component").__root__.eventManager;
+                eventManager = this.require("montage/ui/component").__root__.eventManager;
                 eventManager.handleEvent(fakeEvent);
             } else {
                 eventInfo.target.dispatchEvent(simulatedEvent);
