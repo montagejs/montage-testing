@@ -232,8 +232,8 @@ jasmine.TrivialReporter.prototype.reportSpecResults = function(spec) {
 };
 jasmine.TrivialReporter.prototype.loggerLoaded = false;
 jasmine.TrivialReporter.prototype.log = function() {
-    if (!this.loggerLoaded && require) {
-        require.async("montage/core/logger")
+    if (!this.loggerLoaded && self.mr) {
+        self.mr.async("montage/core/logger")
         .then(function(exports) {
             jasmine.TrivialReporter.prototype.log = exports.logger("jasmine").debug;
             this.loggerLoaded = true;
