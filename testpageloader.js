@@ -553,6 +553,14 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 }
             });
 
+            Object.defineProperty(fakeEvent, "bubbles", {
+                value: event.bubbles
+            });
+
+            Object.defineProperty(fakeEvent, "type", {
+                value: event.type
+            });
+
             return fakeEvent;
         }
     },
