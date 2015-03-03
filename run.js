@@ -15,11 +15,6 @@ exports.run = function (suiteRequire, modules) {
                 modules.forEach(suiteRequire);
                 jasmine.getEnv().execute();
             })
-            .then(function () {
-                if (window.__testacular__) {
-                    window.__testacular__.loaded();
-                }
-            });
     }
 };
 
