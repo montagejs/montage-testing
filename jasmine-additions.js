@@ -1,9 +1,8 @@
-
-queryString = function(parameter) {
+queryString = function (parameter) {
     var i, key, value, equalSign;
     var loc = location.search.substring(1, location.search.length);
     var params = loc.split('&');
-    for (i=0; i<params.length;i++) {
+    for (i = 0; i < params.length; i++) {
         equalSign = params[i].indexOf('=');
         if (equalSign < 0) {
             key = params[i];
@@ -15,7 +14,7 @@ queryString = function(parameter) {
         else {
             key = params[i].substring(0, equalSign);
             if (key == parameter) {
-                value = params[i].substring(equalSign+1);
+                value = params[i].substring(equalSign + 1);
                 break;
             }
         }
@@ -30,35 +29,41 @@ function createJavaScriptContext() {
     iframe.style.display = "none";
     document.body.appendChild(iframe);
     ["Object", "String", "Number", "RegExp", "Array", "Boolean"]
-    .forEach(function (key) {
-        context[key] = iframe.contentWindow[key];
-    });
+        .forEach(function (key) {
+            context[key] = iframe.contentWindow[key];
+        });
     context.document = iframe.contentDocument;
     iframe.parentNode.removeChild(iframe);
 
     return context;
 }
 
-var updateReporter = function() {
+var updateReporter = function () {
     var runner = jasmine.getEnv().currentRunner();
     runner.finishCallback();
 }
 
-addMontageMetadataToProto = function(objectName, moduleId, proto) {
-    Object.defineProperty(proto, "_montage_metadata", { value: { moduleId: moduleId, objectName: objectName, isInstance: false }, enumerable: false});
+addMontageMetadataToProto = function (objectName, moduleId, proto) {
+    Object.defineProperty(proto, "_montage_metadata", {
+        value: {
+            moduleId: moduleId,
+            objectName: objectName,
+            isInstance: false
+        }, enumerable: false
+    });
 };
 
-var waitsThen = function(promise, resolved) {
-    waitsFor(function() {
+var waitsThen = function (promise, resolved) {
+    waitsFor(function () {
         return promise._pending == null;
     }, "promise", 500);
     resolved(promise.valueOf());
 };
 
-var expectationToDispatch = function(object, expectation, handleEvent) {
+var expectationToDispatch = function (object, expectation, handleEvent) {
 
     var handler = {
-        handleEvent: handleEvent? handleEvent : function(event) {}
+        handleEvent: handleEvent ? handleEvent : function (event) {}
     };
 
     if (typeof expectation === "string") {
@@ -67,7 +72,7 @@ var expectationToDispatch = function(object, expectation, handleEvent) {
         object.addEventListener(expectation, handler, false);
     }
 
-    return function(negate) {
+    return function (negate) {
         if (negate) {
             expect(handler.handleEvent).not.toHaveBeenCalled();
         } else {
@@ -78,21 +83,20 @@ var expectationToDispatch = function(object, expectation, handleEvent) {
 };
 
 /**
-Monkey-patches support for promises in Jasmine test blocks.
-@fileoverview
-@example
-describe("promise", function () {
-    it("times out", function () {
-        return Promise.delay(100).timeout(50)
-        .then(function (value) {
-            expect(true).toBe(false);
-        }, function (error) {
-            expect(error).toBe("Timed out");
-        })
-    });
-});
-*/
-
+ * Monkey-patches support for promises in Jasmine test blocks.
+ * @fileoverview
+ * @example
+ * describe("promise", function () {
+ *    it("times out", function () {
+ *        return Promise.delay(100).timeout(50)
+ *        .then(function (value) {
+ *            expect(true).toBe(false);
+ *        }, function (error) {
+ *            expect(error).toBe("Timed out");
+ *        })
+ *    });
+ * });
+ */
 jasmine.Block.prototype.execute = function (onComplete) {
     var spec = this.spec;
     var result;
@@ -107,31 +111,29 @@ jasmine.Block.prototype.execute = function (onComplete) {
         spec.fail('`it` block returns non-promise: ' + result);
         onComplete();
     } else {
-        result.then(function (value) {
-            if (value !== undefined) {
-                spec.fail('Promise fulfilled with unexpected value: ' + value);
-            }
-            onComplete();
-        }, function (error) {
-            spec.fail(error);
-            onComplete();
-        })
-        .timeout(10000)
-        .fail(function (error) {
-            spec.fail(error);
-            onComplete();
-        });
+        result
+            .then(function (value) {
+                if (value !== undefined) {
+                    spec.fail('Promise fulfilled with unexpected value: ' + value);
+                }
+                onComplete();
+            })
+            .timeout(10000)
+            .catch(function (error) {
+                spec.fail(error);
+                onComplete();
+            });
     }
 };
 
-beforeEach(function() {
+beforeEach(function () {
     this.addMatchers({
-        toHave: function(expected) {
+        toHave: function (expected) {
             var actual = this.actual,
                 notText = this.isNot ? " not" : "",
                 isArray = jasmine.isArray_(actual);
 
-            this.message = function() {
+            this.message = function () {
                 if (isArray) {
                     return "Expected " + actual + " to" + notText + " have " + expected;
                 } else {
