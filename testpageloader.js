@@ -34,7 +34,10 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
         value: null
     },
 
-    drawHappened: {
+    /**
+     * @property {Number}
+     */
+    numberOfDidDraws: {
         value: false
     },
 
@@ -72,7 +75,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
 
     loadTest: {
         value: function (promiseForFrameLoad, test) {
-            var pageFirstDraw = Promise.defer();
+            //var pageFirstDraw = Promise.defer();
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
@@ -84,23 +87,23 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
             }
 
             this.loaded = false;
-            //
-            promiseForFrameLoad.then(function (frame) {
-                // implement global function that montage is looking for at load
-                // this is little bit ugly and I'd like to find a better solution
-                self.window.montageWillLoad = function () {
-                    var firstDraw = true;
-                    self.require.async("montage/ui/component")
-                        .then(function (COMPONENT) {
+
+            var p = new Promise(function (resolve, reject) {
+                promiseForFrameLoad.then(function (frame) {
+                    // implement global function that montage is looking for at load
+                    // this is little bit ugly and I'd like to find a better solution
+                    self.window.montageWillLoad = function () {
+                        var firstDraw = true;
+                        self.require.async("montage/ui/component").then(function (COMPONENT) {
                             var root = COMPONENT.__root__;
                             self.rootComponent = root;
+
                             // override the default drawIfNeeded behaviour
                             var originalDrawIfNeeded = root.drawIfNeeded;
                             root.drawIfNeeded = function () {
-
                                 var continueDraw = function () {
                                     originalDrawIfNeeded.call(root);
-                                    self.drawHappened++;
+                                    self.numberOfDidDraws++;
                                     if (firstDraw) {
                                         self.loaded = true;
                                         // assign the application delegate to test so that the convenience methods work
@@ -109,25 +112,24 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
                                         }
                                         if (typeof testCallback === "function") {
                                             if (test.firstDraw) {
-                                                pageFirstDraw.resolve(self);
+                                                resolve(self);
                                             } else {
                                                 // francois HACK
                                                 // not sure how to deal with this
                                                 // if at first draw the page isn't complete the tests will fail
                                                 // so we wait an arbitrary 100ms for subsequent draws to happen...
                                                 setTimeout(function () {
-                                                    pageFirstDraw.resolve(self);
+                                                    resolve(self);
                                                 }, 100);
                                             }
                                         }
                                         firstDraw = false;
                                     }
-                                    if (self._drawHappened) {
-                                        self._drawHappened();
-                                    }
+                                    if (self._drawHappened) self._drawHappened();
                                 };
 
                                 var pause = queryString("pause");
+
                                 if (firstDraw && decodeURIComponent(pause) === "true") {
                                     var handleKeyUp = function (event) {
                                         if (event.which === 82) {
@@ -138,12 +140,11 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
                                     };
                                     self.document.addEventListener("keyup", handleKeyUp, false);
                                     document.addEventListener("keyup", handleKeyUp, false);
-                                } else {
-                                    continueDraw();
-                                }
+                                } else continueDraw();
 
                                 self.willNeedToDraw = false;
                             };
+
                             var originalAddToDrawList = root._addToDrawList;
                             root._addToDrawList = function (childComponent) {
                                 originalAddToDrawList.call(root, childComponent);
@@ -152,20 +153,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
 
                             defaultEventManager = null;
 
-                            return self.require.async("core/event/event-manager")
+                            self.require.async("core/event/event-manager")
                                 .then(function (exports) {
                                     defaultEventManager = exports.defaultEventManager;
                                 });
 
                         });
-                };
+                    };
+                });
             });
 
-            var promiseForTestPage = pageFirstDraw.promise.timeout(timeoutLength);
-            return promiseForTestPage
-                .then(function (self) {
-                    return self;
-                })
+            return p.timeout(timeoutLength)
                 .catch(function (reason) {
                     console.error(testName + " - " + reason.message);
                     return self;
@@ -176,31 +174,33 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
     loadFrame: {
         value: function (options) {
             var self = this, src;
-            var frameLoad = Promise.defer();
-            var callback = function () {
-                frameLoad.resolve(self.window);
-                if (self.testWindow) {
-                    self.testWindow.removeEventListener("load", callback, true);
+            return new Promise(function (resolve, reject) {
+                var callback = function () {
+                    if (self.testWindow) {
+                        self.testWindow.removeEventListener("load", callback, true);
+                    } else {
+                        self.iframe.removeEventListener("load", callback, true);
+                    }
+                    resolve(self.window);
+                };
+
+                if (options.src) {
+                    src = "../test/" + options.src;
                 } else {
-                    self.iframe.removeEventListener("load", callback, true);
+                    src = options.directory + options.testName + ".html";
                 }
-            };
-            if (options.src) {
-                src = "../test/" + options.src;
-            } else {
-                src = options.directory + options.testName + ".html";
-            }
-            if (options.newWindow) {
-                self.testWindow = window.open(src, "test-window");
-                window.addEventListener("unload", function () {
-                    self.unloadTest(testName);
-                }, false);
-                self.testWindow.addEventListener("load", callback, true);
-            } else {
-                self.iframe.src = src;
-                self.iframe.addEventListener("load", callback, true);
-            }
-            return frameLoad.promise;
+
+                if (options.newWindow) {
+                    self.testWindow = window.open(src, "test-window");
+                    window.addEventListener("unload", function () {
+                        self.unloadTest(testName);
+                    }, false);
+                    self.testWindow.addEventListener("load", callback, true);
+                } else {
+                    self.iframe.src = src;
+                    self.iframe.addEventListener("load", callback, true);
+                }
+            });
         }
     },
 
@@ -210,49 +210,47 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
             this.loaded = false;
             if (this.testWindow) {
                 this.testWindow.close();
-                this.testWindow = null;
-            } else {
-                this.iframe.src = "";
             }
-            return this;
+            if (this.iframe) {
+                this.iframe.remove();
+            }
+            //return this;
         }
     },
 
     nextDraw: {
         value: function (numDraws, forceDraw) {
-            var theTestPage = this,
-                deferred = Promise.defer();
+            var theTestPage = this;
 
-            this.drawHappened = false;
+            var promise = new Promise(function (resolve, reject) {
+                this.numberOfDidDraws = 0;
 
-            if (!numDraws) {
-                numDraws = 1;
-            }
+                if (!numDraws) numDraws = 1;
 
-            theTestPage._drawHappened = function () {
-                if (theTestPage.drawHappened == numDraws) {
-                    deferred.resolve(numDraws);
-                    theTestPage._drawHappened = null;
-                }
-            }
-            if (forceDraw) {
-                this.rootComponent.drawTree();
-            }
-            return deferred.promise.timeout(1000);
+                theTestPage._drawHappened = function () {
+                    if (theTestPage.numberOfDidDraws == numDraws) {
+                        theTestPage._drawHappened = null;
+                        resolve(numDraws);
+                    }
+                };
+                if (forceDraw) this.rootComponent.drawTree();
+            });
+
+            return promise.timeout(1000);
         }
     },
 
     waitForDraw: {
         value: function (numDraws, forceDraw) {
             var theTestPage = this;
-            this.drawHappened = false;
+            this.numberOfDidDraws = 0;
 
             if (!numDraws) {
                 numDraws = 1;
             }
 
             waitsFor(function () {
-                return theTestPage.drawHappened >= numDraws;
+                return theTestPage.numberOfDidDraws >= numDraws;
             }, "component drawing", 1000);
             if (forceDraw) {
                 this.rootComponent.drawTree();
@@ -270,15 +268,15 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
 
             if (!currentDraw.oldDraw) {
                 component.draw = function draw() {
-                    draw.drawHappened++;
+                    draw.numberOfDidDraws++;
                     return draw.oldDraw.apply(this, arguments);
-                }
+                };
                 component.draw.oldDraw = currentDraw;
             }
-            component.draw.drawHappened = 0;
+            component.draw.numberOfDidDraws = 0;
 
             waitsFor(function () {
-                return component.draw.drawHappened == numDraws;
+                return component.draw.numberOfDidDraws == numDraws;
             }, "component drawing", 1000);
             if (forceDraw) {
                 this.rootComponent.drawTree();
@@ -838,7 +836,6 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
         value: null
     }
 }, {
-
     queueTest: {
         value: function (testName, options, callback) {
             console.log("TestPageLoader.queueTest() - " + testName);
@@ -846,17 +843,22 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
             options = TestPageLoader.options(testName, options, callback);
 
             describe(testName, function () {
-                it("should load", function () {
+                it("should load", function (done) {
                     console.group(testName);
-                    return testPage.loadTest(testPage.loadFrame(options), options)
-                        .then(function (theTestPage) {
-                            expect(theTestPage.loaded).toBe(true);
-                        });
+                    testPage.loadTest(testPage.loadFrame(options), options)
+                        .then(function (testPage) {
+                            console.log(testPage);
+                            expect(testPage.loaded).toBe(true);
+                        })
+                        .then(done)
                 });
+
                 // add the rest of the assertions
                 options.callback(testPage);
+
                 it("should unload", function () {
                     testPage.unloadTest();
+                    expect(testPage.loaded).toBe(false);
                     console.groupEnd();
                 });
             });
