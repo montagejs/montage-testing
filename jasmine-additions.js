@@ -41,7 +41,7 @@ function createJavaScriptContext() {
 var updateReporter = function () {
     var runner = jasmine.getEnv().currentRunner();
     runner.finishCallback();
-}
+};
 
 addMontageMetadataToProto = function (objectName, moduleId, proto) {
     Object.defineProperty(proto, "_montage_metadata", {
@@ -61,7 +61,6 @@ var waitsThen = function (promise, resolved) {
 };
 
 var expectationToDispatch = function (object, expectation, handleEvent) {
-
     var handler = {
         handleEvent: handleEvent ? handleEvent : function (event) {}
     };
@@ -97,57 +96,82 @@ var expectationToDispatch = function (object, expectation, handleEvent) {
  *    });
  * });
  */
-jasmine.Block.prototype.execute = function (onComplete) {
-    var spec = this.spec;
-    var result;
-    try {
-        result = this.func.apply(spec);
-    } catch (error) {
-        spec.fail(error);
-    }
-    if (typeof result === 'undefined') {
-        onComplete();
-    } else if (typeof result !== 'object' || typeof result.then !== 'function') {
-        spec.fail('`it` block returns non-promise: ' + result);
-        onComplete();
-    } else {
-        result
-            .then(function (value) {
-                if (value !== undefined) {
-                    spec.fail('Promise fulfilled with unexpected value: ' + value);
+//jasmine.Block.prototype.execute = function (onComplete) {
+//    var spec = this.spec;
+//    var result;
+//    try {
+//        result = this.func.apply(spec);
+//    } catch (error) {
+//        spec.fail(error);
+//    }
+//    if (typeof result === 'undefined') {
+//        onComplete();
+//    } else if (typeof result !== 'object' || typeof result.then !== 'function') {
+//        spec.fail('`it` block returns non-promise: ' + result);
+//        onComplete();
+//    } else {
+//        result
+//            .then(function (value) {
+//                if (value !== undefined) {
+//                    spec.fail('Promise fulfilled with unexpected value: ' + value);
+//                }
+//                onComplete();
+//            })
+//            .timeout(10000)
+//            .catch(function (error) {
+//                spec.fail(error);
+//                onComplete();
+//            });
+//    }
+//};
+
+//beforeEach(function () {
+//    this.addMatchers({
+//        toHave: function (expected) {
+//            var actual = this.actual,
+//                notText = this.isNot ? " not" : "",
+//                isArray = jasmine.isArray_(actual);
+//
+//            this.message = function () {
+//                if (isArray) {
+//                    return "Expected " + actual + " to" + notText + " have " + expected;
+//                } else {
+//                    return "Expected " + actual + " to be an array";
+//                }
+//            };
+//
+//            if (isArray) {
+//                return actual.indexOf(expected) >= 0;
+//            } else {
+//                return false;
+//            }
+//        }
+//    })
+//});
+
+var montageMatchers = {
+    toHave: function (util, customEqualityTesters) {
+        return {
+            compare: function (actual, expected) {
+                var actual = this.actual,
+                    notText = this.isNot ? " not" : "",
+                    isArray = Array.isArray(actual),
+                    result = {};
+
+                result.pass = isArray ? actual.indexOf(expected) >= 0 : false;
+
+                if (isArray) {
+                    result.message = "Expected " + actual + " to" + notText + " have " + expected;
+                } else {
+                    result.message = "Expected " + actual + " to be an array";
                 }
-                onComplete();
-            })
-            .timeout(10000)
-            .catch(function (error) {
-                spec.fail(error);
-                onComplete();
-            });
+            }
+        }
     }
 };
 
 beforeEach(function () {
-    this.addMatchers({
-        toHave: function (expected) {
-            var actual = this.actual,
-                notText = this.isNot ? " not" : "",
-                isArray = jasmine.isArray_(actual);
-
-            this.message = function () {
-                if (isArray) {
-                    return "Expected " + actual + " to" + notText + " have " + expected;
-                } else {
-                    return "Expected " + actual + " to be an array";
-                }
-            };
-
-            if (isArray) {
-                return actual.indexOf(expected) >= 0;
-            } else {
-                return false;
-            }
-        }
-    })
+    jasmine.addMatchers(montageMatchers);
 });
 
 var expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, global, logLevel) {

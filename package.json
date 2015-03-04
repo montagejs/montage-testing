@@ -8,6 +8,7 @@
     "main": "run",
     "dependencies": {
         "bluebird": "^2.9.13",
+        "jasmine-core": "^2.2.0",
         "montage": "~0.14.0"
     }
 }
