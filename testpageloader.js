@@ -1,19 +1,29 @@
+//"use strict"; // enable after removing this.options.caller.caller.arguments
+
 /**
+ * @module TestPageLoader
+ *
  * @see https://developer.mozilla.org/en/DOM/HTMLIFrameElement
  */
-var Montage = require("montage").Montage;
-var dom = require("montage/core/dom");
-var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
-var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
-var Promise = require("montage/core/promise").Promise;
-var defaultEventManager;
+var Montage = require("montage").Montage,
+    dom = require("montage/core/dom"),
+    ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener,
+    MutableEvent = require("montage/core/event/mutable-event").MutableEvent,
+    // TODO: use npm to manage bluebird once it hits 3.0
+    Promise = require("support/bluebird"),
+    defaultEventManager;
 
-if (!console.group) {
-    console.group = console.groupEnd = console.log;
-}
+// better bluebird debugging
+Promise.longStackTraces();
 
-var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
+// < IE11
+if (!console.group) console.group = console.groupEnd = console.log;
 
+/**
+ * @class TestPageLoader
+ * @extends Montage
+ */
+var TestPageLoader = exports.TestPageLoader = Montage.specialize({
     constructor: {
         value: function TestPageLoader() {
             if (typeof window.testpage === "undefined") {
@@ -31,11 +41,12 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         }
     },
 
-    iframeSrc: {
-        value: null
-    },
+    iframeSrc: {value: null},
 
-    drawHappened: {
+    /**
+     * @property {Number}
+     */
+    numberOfDidDraws: {
         value: false
     },
 
@@ -52,170 +63,164 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     endTest: {
-        value: function() {
+        value: function () {
             this.loading = false;
             this.callNext();
         }
     },
 
     callNext: {
-        value: function() {
+        value: function () {
             if (!this.loading && this.testQueue.length !== 0) {
                 var self = this;
                 this.unloadTest();
-                setTimeout(function() {
-                    self.loadTest(self.testQueue.shift());
-                    self.loading = true;
-                }, 0);
+
+                self.loadTest(self.testQueue.shift());
+                self.loading = true;
+                //setTimeout(function () {
+                //    self.loadTest(self.testQueue.shift());
+                //    self.loading = true;
+                //}, 0);
             }
         }
     },
 
     loadTest: {
-        value: function(promiseForFrameLoad, test) {
-            var pageFirstDraw = Promise.defer();
+        value: function (promiseForFrameLoad, test) {
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
-                self = this,
-                src;
+                self = this;
 
-            if (!timeoutLength) {
-                timeoutLength = 10000;
-            }
+            if (!timeoutLength) timeoutLength = 10000;
 
             this.loaded = false;
-            //
-            promiseForFrameLoad.then( function(frame) {
-                // implement global function that montage is looking for at load
-                // this is little bit ugly and I'd like to find a better solution
-                self.window.montageWillLoad = function() {
-                    var firstDraw = true;
-                    self.require.async("montage/ui/component")
-                    .then(function (COMPONENT) {
-                        var root = COMPONENT.__root__;
-                        self.rootComponent = root;
-                        // override the default drawIfNeeded behaviour
-                        var originalDrawIfNeeded = root.drawIfNeeded;
-                        root.drawIfNeeded = function() {
 
-                            var continueDraw = function() {
-                                originalDrawIfNeeded.call(root);
-                                self.drawHappened++;
-                                if(firstDraw) {
-                                    self.loaded = true;
-                                    // assign the application delegate to test so that the convenience methods work
-                                    if (! self.window.test && self.require("montage/core/application").application) {
-                                        self.window.test = self.require("montage/core/application").application.delegate;
-                                    }
-                                    if (typeof testCallback === "function") {
-                                        if (test.firstDraw) {
-                                            pageFirstDraw.resolve(self);
-                                        } else {
-                                            // francois HACK
-                                            // not sure how to deal with this
-                                            // if at first draw the page isn't complete the tests will fail
-                                            // so we wait an arbitrary 100ms for subsequent draws to happen...
-                                            setTimeout(function() {
-                                                pageFirstDraw.resolve(self);
-                                            }, 100);
+            var p = new Promise(function (resolve) {
+                promiseForFrameLoad.then(function (frame) {
+                    // implement global function that montage is looking for at load
+                    // this is little bit ugly and I'd like to find a better solution
+                    self.window.montageWillLoad = function () {
+                        var firstDraw = true;
+                        self.require.async("montage/ui/component").then(function (COMPONENT) {
+                            var root = COMPONENT.__root__;
+                            self.rootComponent = root;
+
+                            // override the default drawIfNeeded behaviour
+                            var originalDrawIfNeeded = root.drawIfNeeded;
+                            root.drawIfNeeded = function () {
+                                var continueDraw = function () {
+                                    originalDrawIfNeeded.call(root);
+                                    self.numberOfDidDraws++;
+                                    if (firstDraw) {
+                                        self.loaded = true;
+                                        // assign the application delegate to test so that the convenience methods work
+                                        if (!self.window.test && self.require("montage/core/application").application) {
+                                            self.window.test = self.require("montage/core/application").application.delegate;
                                         }
+                                        if (typeof testCallback === "function") {
+                                            if (test.firstDraw) {
+                                                resolve(self);
+                                            } else {
+                                                // francois HACK
+                                                // not sure how to deal with this
+                                                // if at first draw the page isn't complete the tests will fail
+                                                // so we wait an arbitrary 100ms for subsequent draws to happen...
+                                                Promise.delay(100).then(function () {
+                                                    resolve(self);
+                                                });
+                                            }
+                                        }
+                                        firstDraw = false;
                                     }
-                                    firstDraw = false;
-                                }
-                                if (self._drawHappened) {
-                                    self._drawHappened();
-                                }
+                                    if (self._drawHappened) self._drawHappened();
+                                };
+
+                                var pause = queryString("pause");
+
+                                if (firstDraw && decodeURIComponent(pause) === "true") {
+                                    var handleKeyUp = function (event) {
+                                        if (event.which === 82) {
+                                            self.document.removeEventListener("keyup", handleKeyUp, false);
+                                            document.removeEventListener("keyup", handleKeyUp, false);
+                                            continueDraw();
+                                        }
+                                    };
+                                    self.document.addEventListener("keyup", handleKeyUp, false);
+                                    document.addEventListener("keyup", handleKeyUp, false);
+                                } else continueDraw();
+
+                                self.willNeedToDraw = false;
                             };
 
-                            var pause = queryString("pause");
-                            if (firstDraw && decodeURIComponent(pause) === "true") {
-                                var handleKeyUp = function(event) {
-                                    if (event.which === 82) {
-                                        self.document.removeEventListener("keyup", handleKeyUp,false);
-                                        document.removeEventListener("keyup", handleKeyUp,false);
-                                        continueDraw();
-                                    }
-                                };
-                                self.document.addEventListener("keyup", handleKeyUp,false);
-                                document.addEventListener("keyup", handleKeyUp,false);
-                            } else {
-                                continueDraw();
-                            }
+                            var originalAddToDrawList = root._addToDrawList;
+                            root._addToDrawList = function (childComponent) {
+                                originalAddToDrawList.call(root, childComponent);
+                                self.willNeedToDraw = true;
+                            };
 
+                            defaultEventManager = null;
 
-                            self.willNeedToDraw = false;
-                        };
-                        var originalAddToDrawList = root._addToDrawList;
-                        root._addToDrawList = function(childComponent) {
-                            originalAddToDrawList.call(root, childComponent);
-                            self.willNeedToDraw = true;
-                        };
+                            return self.require.async("montage/core/event/event-manager")
+                                .then(function (exports) {
+                                    defaultEventManager = exports.defaultEventManager;
+                                });
 
-                        defaultEventManager = null;
-
-                        return self.require.async("core/event/event-manager")
-                        .then(function (exports) {
-                            defaultEventManager = exports.defaultEventManager;
                         });
-
-                    })
-                    .done();
-                };
+                    };
+                });
             });
 
-
-            var promiseForTestPage = pageFirstDraw.promise.timeout(timeoutLength);
-            return promiseForTestPage
-                .then(function(self) {
-                    return self;
-                })
-                .fail(function(reason) {
+            return p.timeout(timeoutLength)
+                .catch(function (reason) {
                     console.error(testName + " - " + reason.message);
                     return self;
                 });
-         }
+        }
     },
 
     loadFrame: {
-        value: function(options) {
+        value: function (options) {
             var self = this, src;
-            var frameLoad = Promise.defer();
-            var callback = function() {
-                frameLoad.resolve(self.window);
-                if (self.testWindow) {
-                    self.testWindow.removeEventListener("load", callback, true);
+            return new Promise(function (resolve) {
+                var callback = function () {
+                    if (self.testWindow) {
+                        self.testWindow.removeEventListener("load", callback, true);
+                    } else {
+                        self.iframe.removeEventListener("load", callback, true);
+                    }
+                    resolve(self.window);
+                };
+
+                if (options.src) {
+                    src = "../test/" + options.src;
                 } else {
-                    self.iframe.removeEventListener("load", callback, true);
+                    src = options.directory + options.testName + ".html";
                 }
-            };
-            if (options.src) {
-                src = "../test/" + options.src;
-            } else {
-                src = options.directory + options.testName + ".html";
-            }
-            if (options.newWindow) {
-                self.testWindow = window.open(src, "test-window");
-                window.addEventListener("unload", function() {
-                    self.unloadTest(testName);
-                }, false);
-                self.testWindow.addEventListener("load", callback, true);
-            } else {
-                self.iframe.src = src;
-                self.iframe.addEventListener("load", callback, true);
-            }
-            return frameLoad.promise;
+
+                if (options.newWindow) {
+                    self.testWindow = window.open(src, "test-window");
+                    window.addEventListener("unload", function () {
+                        self.unloadTest(testName);
+                    }, false);
+                    self.testWindow.addEventListener("load", callback, true);
+                } else {
+                    self.iframe.src = src;
+                    self.iframe.addEventListener("load", callback, true);
+                }
+            });
         }
     },
 
     unloadTest: {
         enumerable: false,
-        value: function(testName) {
+        value: function (testName) {
             this.loaded = false;
             if (this.testWindow) {
                 this.testWindow.close();
-                this.testWindow = null;
-            } else {
+            }
+            if (this.iframe) {
+                // TODO call this.iframe.remove() when it's the last test
                 this.iframe.src = "";
             }
             return this;
@@ -223,49 +228,45 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     nextDraw: {
-        value: function(numDraws, forceDraw) {
-            var theTestPage = this,
-                deferred = Promise.defer();
+        value: function (numDraws, forceDraw) {
+            var theTestPage = this;
 
-            this.drawHappened = false;
+            var promise = new Promise(function (resolve, reject) {
+                this.numberOfDidDraws = 0;
 
-            if (!numDraws) {
-                numDraws = 1;
-            }
+                if (!numDraws) numDraws = 1;
 
-            theTestPage._drawHappened = function() {
-                if(theTestPage.drawHappened == numDraws) {
-                    deferred.resolve(numDraws);
-                    theTestPage._drawHappened = null;
-                }
-            }
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
-            return deferred.promise.timeout(1000);
+                theTestPage._drawHappened = function () {
+                    if (theTestPage.numberOfDidDraws == numDraws) {
+                        theTestPage._drawHappened = null;
+                        resolve(numDraws);
+                    }
+                };
+
+                if (forceDraw) this.rootComponent.drawTree();
+            });
+
+            return promise.timeout(1000);
         }
     },
 
     waitForDraw: {
-        value: function(numDraws, forceDraw) {
+        value: function (numDraws, forceDraw) {
             var theTestPage = this;
-            this.drawHappened = false;
+            this.numberOfDidDraws = 0;
 
-            if (!numDraws) {
-                numDraws = 1;
-            }
+            if (!numDraws) numDraws = 1;
 
-            waitsFor(function() {
-                return theTestPage.drawHappened >= numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
+            waitsFor(function () {
+                return theTestPage.numberOfDidDraws >= numDraws;
+            }, "component drawing", 1000);
+
+            if (forceDraw) this.rootComponent.drawTree();
         }
     },
 
     waitForComponentDraw: {
-        value: function(component, numDraws, forceDraw) {
+        value: function (component, numDraws, forceDraw) {
             if (!numDraws) {
                 numDraws = 1;
             }
@@ -274,17 +275,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             if (!currentDraw.oldDraw) {
                 component.draw = function draw() {
-                    draw.drawHappened++;
+                    draw.numberOfDidDraws++;
                     return draw.oldDraw.apply(this, arguments);
-                }
+                };
                 component.draw.oldDraw = currentDraw;
             }
-            component.draw.drawHappened = 0;
+            component.draw.numberOfDidDraws = 0;
 
-            waitsFor(function() {
-                return component.draw.drawHappened == numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
+            waitsFor(function () {
+                return component.draw.numberOfDidDraws == numDraws;
+            }, "component drawing", 1000);
+            if (forceDraw) {
                 this.rootComponent.drawTree();
             }
         }
@@ -292,34 +293,34 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     getElementById: {
         enumerable: false,
-        value: function(elementId) {
+        value: function (elementId) {
             return this.document.getElementById(elementId);
         }
     },
 
     querySelector: {
         enumerable: false,
-        value: function(selector) {
+        value: function (selector) {
             return this.document.querySelector(selector);
         }
     },
 
     querySelectorAll: {
         enumerable: false,
-        value: function(selector) {
+        value: function (selector) {
             return this.document.querySelectorAll(selector);
         }
     },
 
     test: {
         enumerable: false,
-        get: function() {
+        get: function () {
             return this.window.test;
         }
     },
 
     document: {
-        get: function() {
+        get: function () {
             if (this.testWindow) {
                 return this.testWindow.document;
             } else {
@@ -329,7 +330,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     window: {
-        get: function() {
+        get: function () {
             if (this.testWindow) {
                 return this.testWindow;
             } else {
@@ -339,32 +340,35 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     require: {
-        get: function() {
+        get: function () {
             // Handle transition period from `require` to `mr`.
             return this.window.mr || this.window.require;
         }
     },
 
     addListener: {
-        value: function(component, fn, type) {
+        value: function (component, fn, type) {
             type = type || "action";
             var buttonSpy = {
-                doSomething: fn || function(event) {
-                    return 1+1;
+                doSomething: fn || function (event) {
+                    return 1 + 1;
                 }
             };
             spyOn(buttonSpy, 'doSomething');
 
-            var actionListener = Montage.create(ActionEventListener).initWithHandler_action_(buttonSpy, "doSomething");
+            var actionListener = new ActionEventListener();
+            actionListener.initWithHandler_action_(buttonSpy, "doSomething");
             component.addEventListener(type, actionListener);
 
             return buttonSpy.doSomething;
         }
     },
 
+    // Event Simulation ==============================
+
     keyEvent: {
         enumerable: false,
-        value: function(eventInfo, eventName, callback) {
+        value: function (eventInfo, eventName, callback) {
             if (!eventName) {
                 eventName = "keypress";
             }
@@ -373,16 +377,16 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             eventInfo.charCode = eventInfo.charCode || 0;
 
             var doc = this.iframe.contentDocument,
-                mofifiers = eventInfo.modifiers.split(" "),
+                modifiers = eventInfo.modifiers.split(" "),
                 event = {
                     altGraphKey: false,
-                    altKey: mofifiers.indexOf("alt") !== -1,
+                    altKey: modifiers.indexOf("alt") !== -1,
                     bubbles: true,
                     cancelBubble: false,
                     cancelable: true,
                     charCode: eventInfo.charCode,
                     clipboardData: undefined,
-                    ctrlKey: mofifiers.indexOf("control") !== -1,
+                    ctrlKey: modifiers.indexOf("control") !== -1,
                     currentTarget: null,
                     defaultPrevented: false,
                     detail: 0,
@@ -390,25 +394,25 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     keyCode: eventInfo.keyCode,
                     layerX: 0,
                     layerY: 0,
-                    metaKey: mofifiers.indexOf("meta") !== -1,
+                    metaKey: modifiers.indexOf("meta") !== -1,
                     pageX: 0,
                     pageY: 0,
                     preventDefault: Function.noop,
                     returnValue: true,
-                    shiftKey: mofifiers.indexOf("shift") !== -1,
+                    shiftKey: modifiers.indexOf("shift") !== -1,
                     srcElement: eventInfo.target,
                     target: eventInfo.target,
                     timeStamp: new Date().getTime(),
                     type: eventName,
                     view: doc.defaultView,
                     which: eventInfo.charCode || eventInfo.keyCode
-                    },
-                targettedEvent = MutableEvent.fromEvent(event);
+                },
+                targetedEvent = MutableEvent.fromEvent(event);
 
-            defaultEventManager.handleEvent(targettedEvent);
+            defaultEventManager.handleEvent(targetedEvent);
 
             if (typeof callback === "function") {
-                if(this.willNeedToDraw) {
+                if (this.willNeedToDraw) {
                     this.waitForDraw();
                     runs(callback);
                 } else {
@@ -421,7 +425,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     wheelEvent: {
         enumerable: false,
-        value: function(eventInfo, eventName, callback) {
+        value: function (eventInfo, eventName, callback) {
             var doc = this.iframe.contentDocument,
                 event = doc.createEvent("CustomEvent");
 
@@ -431,7 +435,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             eventInfo.target.dispatchEvent(event);
 
             if (typeof callback === "function") {
-                if(this.willNeedToDraw) {
+                if (this.willNeedToDraw) {
                     this.waitForDraw();
                     runs(callback);
                 } else {
@@ -444,23 +448,37 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     mouseEvent: {
         enumerable: false,
-        value: function(eventInfo, eventName, callback) {
-            if (!eventName) {
-                eventName = "click";
-            }
+        value: function (eventInfo, eventName, callback) {
+            eventName = eventName || "click";
             eventInfo.clientX = eventInfo.clientX || eventInfo.target.offsetLeft;
             eventInfo.clientY = eventInfo.clientY || eventInfo.target.offsetTop;
 
-            var doc = this.iframe.contentDocument,
-                event = doc.createEvent('MouseEvents');
+            var event, doc = this.iframe.contentDocument;
 
-            event.initMouseEvent(eventName, true, true, doc.defaultView,
-                null, null, null, eventInfo.clientX, eventInfo.clientY,
-                false, false, false, false,
-                0, null);
+            if (typeof window.CustomEvent === 'function') {
+                var mouseEventInit = {
+                    bubbles: true,
+                    cancelable: true,
+                    view: doc.defaultView,
+                    clientX: eventInfo.clientX,
+                    clientY: eventInfo.clientY,
+                    button: 0 // left mouse button press
+                };
+
+                event = new MouseEvent(eventName, mouseEventInit);
+
+            } else { // <= IE11
+                event = doc.createEvent('MouseEvents');
+                event.initMouseEvent(
+                    eventName, true, true, doc.defaultView, null, null, null, eventInfo.clientX,
+                    eventInfo.clientY, false, false, false, false, 0, null
+                );
+            }
+
             eventInfo.target.dispatchEvent(event);
+
             if (typeof callback === "function") {
-                if(this.willNeedToDraw) {
+                if (this.willNeedToDraw) {
                     this.waitForDraw();
                     runs(callback);
                 } else {
@@ -473,19 +491,18 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     touchEvent: {
         enumerable: false,
-        value: function(eventInfo, eventName, callback) {
+        value: function (eventInfo, eventName, callback) {
             if (!eventName) {
                 eventName = "touchstart";
             }
             var doc = this.document,
                 simulatedEvent = doc.createEvent("CustomEvent"),
                 fakeEvent,
-                event,
                 touch,
                 eventManager,
-                // We need to dispatch a fake event through the event manager
-                // to fake the timestamp because it's not possible to modify
-                // the timestamp of an event.
+            // We need to dispatch a fake event through the event manager
+            // to fake the timestamp because it's not possible to modify
+            // the timestamp of an event.
                 dispatchThroughEventManager = eventInfo.timeStamp != null;
 
             if (typeof eventInfo.touches !== "undefined") {
@@ -515,7 +532,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             if (typeof callback === "function") {
-                if(this.willNeedToDraw) {
+                if (this.willNeedToDraw) {
                     this.waitForDraw();
                     runs(callback);
                 } else {
@@ -527,7 +544,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     _createFakeEvent: {
-        value: function(event, fakeProperties) {
+        value: function (event, fakeProperties) {
             var fakeEvent;
 
             fakeEvent = Object.create(event);
@@ -538,17 +555,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 value: fakeProperties.target
             });
             Object.defineProperty(fakeEvent, "preventDefault", {
-                value: function(){
+                value: function () {
                     return event.preventDefault();
                 }
             });
             Object.defineProperty(fakeEvent, "stopPropagation", {
-                value: function(){
+                value: function () {
                     return event.stopPropagation();
                 }
             });
             Object.defineProperty(fakeEvent, "stopImmediatePropagation", {
-                value: function(){
+                value: function () {
                     return event.stopImmediatePropagation();
                 }
             });
@@ -559,7 +576,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     clickOrTouch: {
         enumerable: false,
-        value: function(eventInfo, callback) {
+        value: function (eventInfo, callback) {
             if (window.Touch) {
                 this.touchEvent(eventInfo, "touchstart");
                 this.touchEvent(eventInfo, "touchend");
@@ -570,7 +587,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 this.mouseEvent(eventInfo, "click");
             }
             if (typeof callback === "function") {
-                if(this.willNeedToDraw) {
+                if (this.willNeedToDraw) {
                     this.waitForDraw();
                     runs(callback);
                 } else {
@@ -583,7 +600,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     dragElementOffsetTo: {
         enumerable: false,
-        value: function(element, offsetX, offsetY, startCallback, moveCallback, endCallback, options) {
+        value: function (element, offsetX, offsetY, startCallback, moveCallback, endCallback, options) {
             var self = this;
             var startEventName = "mousedown";
             var moveEventName = "mousemove";
@@ -591,7 +608,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             var eventFactoryName = "mouseEvent";
 
             if (options) {
-                if(options.pointerType === "touch" || window.Touch) {
+                if (options.pointerType === "touch" || window.Touch) {
                     startEventName = "touchstart";
                     moveEventName = "touchmove";
                     endEventName = "touchend";
@@ -608,11 +625,11 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             // Mouse move doesn't happen instantly
             waits(10);
-            runs(function() {
-                var ax = element.offsetLeft + offsetX/2,
-                ay = element.offsetTop + offsetY/2,
-                bx = element.offsetLeft + offsetX,
-                by = element.offsetTop + offsetY;
+            runs(function () {
+                var ax = element.offsetLeft + offsetX / 2,
+                    ay = element.offsetTop + offsetY / 2,
+                    bx = element.offsetLeft + offsetX,
+                    by = element.offsetTop + offsetY;
 
                 // Do two moves to be slightly realistic
                 self[eventFactoryName]({
@@ -642,7 +659,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     fireEventsOnTimeline: {
-        value: function(timeline, callback) {
+        value: function (timeline, callback) {
             var i, j, stepKey;
             for (i = 0; i < timeline.length; i++) {
                 var line = timeline[i];
@@ -662,7 +679,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         eventInfo.timeStamp = time;
                     }
                     for (stepKey in step) {
-                        if(stepKey.indexOf(line.type) !== -1) {
+                        if (stepKey.indexOf(line.type) !== -1) {
                             eventInfo.eventType = stepKey;
                             var typeInfo = step[stepKey];
                             if (typeInfo) {
@@ -676,7 +693,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             eventInfo[key] = step[stepKey];
                         }
                     }
-                    console.log("_scheduleEventForTime", eventInfo);
+                    //console.log("_scheduleEventForTime", eventInfo);
                     this._scheduleEventForTime(eventInfo, time, callback);
                 }
             }
@@ -692,19 +709,19 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     _scheduleEventForTime: {
-        value: function(eventInfo, t, callback) {
+        value: function (eventInfo, t, callback) {
             var self = this;
-            if(!self._eventsInOrder) {
+            if (!self._eventsInOrder) {
                 self._eventsInOrder = [];
                 self._touchesInProgress = [];
-                var foo = function() {
+                var foo = function () {
                     waits(10);
-                    runs(function() {
+                    runs(function () {
                         var events = self._eventsInOrder[self._nextStepTime];
                         if (events) {
                             console.log("********** nextStepTime:" + self._nextStepTime + " **********");
                         }
-                        while(!events || self._eventsInOrder.length === self._nextStepTime) {
+                        while (!events || self._eventsInOrder.length === self._nextStepTime) {
                             self._nextStepTime++;
                             events = self._eventsInOrder[self._nextStepTime];
                             if (events) {
@@ -714,7 +731,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                         self._dispatchScheduledEvents(events);
                         callback(self._nextStepTime);
                         self._nextStepTime++;
-                        if(self._eventsInOrder.length > self._nextStepTime) {
+                        if (self._eventsInOrder.length > self._nextStepTime) {
                             // while we have more events in the time line keep going.
                             foo();
                         } else {
@@ -725,7 +742,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 };
                 foo();
             }
-            if(self._eventsInOrder[t]) {
+            if (self._eventsInOrder[t]) {
                 self._eventsInOrder[t].push(eventInfo);
             } else {
                 self._eventsInOrder[t] = [eventInfo];
@@ -738,17 +755,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     _dispatchScheduledEvents: {
-        value: function(eventFragments) {
+        value: function (eventFragments) {
             var i, eventInfos = {}, eventInfo;
             for (i = 0; i < eventFragments.length; i++) {
                 var pointer = eventFragments[i];
-                if(pointer.type === "touch") {
-                    if(pointer.eventType === "touchstart") {
+                if (pointer.type === "touch") {
+                    if (pointer.eventType === "touchstart") {
                         this._touchesInProgress.push(pointer);
-                    } else if(pointer.typeName === "touchend") {
-                        this._touchesInProgress.splice(this._touchesInProgress.indexOf(pointer),1);
+                    } else if (pointer.typeName === "touchend") {
+                        this._touchesInProgress.splice(this._touchesInProgress.indexOf(pointer), 1);
                     }
-                    if(eventInfo = eventInfos[pointer.eventType]) {
+                    if (eventInfo = eventInfos[pointer.eventType]) {
                         // if the event is already initialized all we need to do is add to the changedTouches.
                         eventInfo.changedTouches.push(pointer);
                     } else {
@@ -764,7 +781,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 }
             }
             // at the end we know all the touches
-            for(var eventType in eventInfos) {
+            for (var eventType in eventInfos) {
                 eventInfo = eventInfos[eventType];
                 eventInfo.touches = this._touchesInProgress;
                 // this is not strictly correct
@@ -776,7 +793,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     evaluateNode: {
         enumerable: false,
-        value: function(xpathExpression, contextNode, namespaceResolver, resultType, result) {
+        value: function (xpathExpression, contextNode, namespaceResolver, resultType, result) {
             if (!contextNode) {
                 contextNode = this.document;
             }
@@ -802,28 +819,28 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     evaluateBoolean: {
         enumerable: false,
-        value: function(xpathExpression) {
+        value: function (xpathExpression) {
             return this.evaluateNode(xpathExpression, null, null, XPathResult.BOOLEAN_TYPE, null);
         }
     },
 
     evaluateNumber: {
         enumerable: false,
-        value: function(xpathExpression) {
+        value: function (xpathExpression) {
             return this.evaluateNode(xpathExpression, null, null, XPathResult.NUMBER_TYPE, null);
         }
     },
 
     evaluateString: {
         enumerable: false,
-        value: function(xpathExpression) {
+        value: function (xpathExpression) {
             return this.evaluateNode(xpathExpression, null, null, XPathResult.STRING_TYPE, null);
         }
     },
 
     handleEvent: {
         enumerable: false,
-        value: function(event) {
+        value: function (event) {
             if (this[event.type]) {
                 this[event.type](event);
             }
@@ -842,28 +859,31 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         value: null
     }
 }, {
-
     queueTest: {
-        value: function(testName, options, callback) {
-            console.log("TestPageLoader.queueTest() - " + testName);
-            testPage = TestPageLoader.testPage;
+        value: function (testName, options, callback) {
+            var testPage = TestPageLoader.testPage;
             options = TestPageLoader.options(testName, options, callback);
 
-            describe(testName, function() {
-                it("should load", function() {
-                   console.group(testName);
-                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
-                       expect(theTestPage.loaded).toBe(true);
-                   });
+            describe(testName, function () {
+                it("should load", function () {
+                    console.group(testName);
+                    runs(function () {
+                        return testPage.loadTest(testPage.loadFrame(options), options)
+                            .then(function (theTestPage) {
+                                expect(theTestPage.loaded).toBe(true);
+                            });
+                    })
                 });
+
                 // add the rest of the assertions
                 options.callback(testPage);
-                it("should unload", function() {
-                   testPage.unloadTest();
-                   console.groupEnd();
+
+                it("should unload", function () {
+                    testPage.unloadTest();
+                    expect(testPage.loaded).toBe(false);
+                    console.groupEnd();
                 });
             });
-
 
             //testPage.testQueue.push(options);
             //return testPage;
@@ -871,22 +891,20 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     options: {
-        value: function(testName, options) {
-            var callback = arguments[2];
+        value: function (testName, options, callback) {
             if (typeof options === "function") {
-                options = { callback: options};
+                options = {callback: options};
             } else {
-                if (options == null) {
-                    options = {};
-                }
+                options = options || {};
                 options.callback = callback;
             }
             options.testName = testName;
-            // FIXME Hack to get current directory
+
+            // TODO FIXME Hack to get current directory
             var dir;
             if (this.options.caller.caller.arguments
-                    && this.options.caller.caller.arguments[2]
-                    && this.options.caller.caller.arguments[2].directory) {
+                && this.options.caller.caller.arguments[2]
+                && this.options.caller.caller.arguments[2].directory) {
                 dir = this.options.caller.caller.arguments[2].directory
             } else {
                 dir = this.options.caller.caller.caller.arguments[2].directory
@@ -898,7 +916,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     },
 
     testPage: {
-        get: function() {
+        get: function () {
             var testPage = window.testpage;
             if (!testPage) {
                 testPage = new TestPageLoader();
@@ -908,8 +926,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     }
 });
 
-var EventInfo = exports.EventInfo = Montage.specialize( {
-
+exports.EventInfo = Montage.specialize({
     target: {
         value: null
     },
@@ -931,7 +948,7 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
     },
 
     initWithElement: {
-        value: function(element) {
+        value: function (element) {
             if (element != null) {
                 this.target = element;
 
@@ -942,21 +959,21 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
                 this.pageY = elementDelta.y + element.offsetHeight / 2;
 
             } else {
-                 this.target =  window.testpage.window.document;
+                this.target = window.testpage.window.document;
             }
             return this;
         }
     },
 
     initWithSelector: {
-        value: function(selector) {
+        value: function (selector) {
             var element = this.querySelector(selector);
             return this.initWithElement(element);
-       }
+        }
     },
 
     initWithElementAndPosition: {
-        value: function(element, x, y) {
+        value: function (element, x, y) {
             this.initWithElement(element);
             this.clientX = x;
             this.clientY = y;
@@ -965,13 +982,13 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
     },
 
     positionOfElement: {
-        value: function(element) {
+        value: function (element) {
             return dom.convertPointFromNodeToPage(element);
         }
     },
 
     move: {
-        value: function(x, y) {
+        value: function (x, y) {
             if (x) {
                 this.clientX += x;
                 this.pageX += x;
@@ -983,13 +1000,10 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
         }
     },
 
-    testPageLoader: {
-        value: null
-    }
+    testPageLoader: {value: null}
 
 });
 
-
-window.loaded = function() {
+window.loaded = function () {
     window.testpage.loaded = true;
 };
