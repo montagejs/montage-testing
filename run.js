@@ -22,14 +22,14 @@ var jasmineEnv = jasmine.getEnv();
 
 jasmineEnv.updateInterval = 1000;
 
-if (jasmine.HtmlReporter) {
-    jasmineEnv.addReporter(new jasmine.HtmlReporter());
-}
-
-if (jasmine.JsApiReporter) {
-    jasmineEnv.addReporter(new jasmine.JsApiReporter());
-}
-
-if (jasmine.JSReporter) {
-    jasmineEnv.addReporter(new jasmine.JSReporter());
-}
+//if (jasmine.HtmlReporter) {
+//    jasmineEnv.addReporter(jasmine.HtmlReporter);
+//}
+//
+//if (jasmine.JsApiReporter) {
+//    jasmineEnv.addReporter(new jasmine.JsApiReporter());
+//}
+//
+//if (jasmine.JSReporter) {
+//    jasmineEnv.addReporter(new jasmine.JSReporter());
+//}
