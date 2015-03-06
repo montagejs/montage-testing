@@ -441,20 +441,34 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize({
     mouseEvent: {
         enumerable: false,
         value: function (eventInfo, eventName, callback) {
-            if (!eventName) {
-                eventName = "click";
-            }
+            eventName = eventName || "click";
             eventInfo.clientX = eventInfo.clientX || eventInfo.target.offsetLeft;
             eventInfo.clientY = eventInfo.clientY || eventInfo.target.offsetTop;
 
-            var doc = this.iframe.contentDocument,
-                event = doc.createEvent('MouseEvents');
+            var event, doc = this.iframe.contentDocument;
 
-            event.initMouseEvent(eventName, true, true, doc.defaultView,
-                null, null, null, eventInfo.clientX, eventInfo.clientY,
-                false, false, false, false,
-                0, null);
+            if (typeof window.CustomEvent === 'function') {
+                var mouseEventInit = {
+                    bubbles: true,
+                    cancelable: true,
+                    view: doc.defaultView,
+                    clientX: eventInfo.clientX,
+                    clientY: eventInfo.clientY,
+                    button: 0 // left mouse button press
+                };
+
+                event = new MouseEvent(eventName, mouseEventInit);
+
+            } else { // <= IE11
+                event = doc.createEvent('MouseEvents');
+                event.initMouseEvent(
+                    eventName, true, true, doc.defaultView, null, null, null, eventInfo.clientX,
+                    eventInfo.clientY, false, false, false, false, 0, null
+                );
+            }
+
             eventInfo.target.dispatchEvent(event);
+
             if (typeof callback === "function") {
                 if (this.willNeedToDraw) {
                     this.waitForDraw();
