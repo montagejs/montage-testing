@@ -1,4 +1,6 @@
-queryString = function (parameter) {
+"use strict";
+
+var queryString = function (parameter) {
     var i, key, value, equalSign;
     var loc = location.search.substring(1, location.search.length);
     var params = loc.split('&');
@@ -41,15 +43,16 @@ function createJavaScriptContext() {
 var updateReporter = function () {
     var runner = jasmine.getEnv().currentRunner();
     runner.finishCallback();
-}
+};
 
-addMontageMetadataToProto = function (objectName, moduleId, proto) {
+var addMontageMetadataToProto = function (objectName, moduleId, proto) {
     Object.defineProperty(proto, "_montage_metadata", {
         value: {
             moduleId: moduleId,
             objectName: objectName,
             isInstance: false
-        }, enumerable: false
+        },
+        enumerable: false
     });
 };
 
@@ -61,7 +64,6 @@ var waitsThen = function (promise, resolved) {
 };
 
 var expectationToDispatch = function (object, expectation, handleEvent) {
-
     var handler = {
         handleEvent: handleEvent ? handleEvent : function (event) {}
     };
@@ -100,11 +102,13 @@ var expectationToDispatch = function (object, expectation, handleEvent) {
 jasmine.Block.prototype.execute = function (onComplete) {
     var spec = this.spec;
     var result;
+
     try {
         result = this.func.apply(spec);
     } catch (error) {
         spec.fail(error);
     }
+
     if (typeof result === 'undefined') {
         onComplete();
     } else if (typeof result !== 'object' || typeof result.then !== 'function') {
@@ -149,6 +153,31 @@ beforeEach(function () {
         }
     })
 });
+
+//var montageMatchers = {
+//    toHave: function (util, customEqualityTesters) {
+//        return {
+//            compare: function (actual, expected) {
+//                var actual = this.actual,
+//                    notText = this.isNot ? " not" : "",
+//                    isArray = Array.isArray(actual),
+//                    result = {};
+//
+//                result.pass = isArray ? actual.indexOf(expected) >= 0 : false;
+//
+//                if (isArray) {
+//                    result.message = "Expected " + actual + " to" + notText + " have " + expected;
+//                } else {
+//                    result.message = "Expected " + actual + " to be an array";
+//                }
+//            }
+//        }
+//    }
+//};
+//
+//beforeEach(function () {
+//    jasmine.addMatchers(montageMatchers);
+//});
 
 var expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, global, logLevel) {
     logLevel = logLevel ? logLevel : "log";
