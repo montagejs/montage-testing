@@ -899,13 +899,15 @@ jasmine.Env.prototype.compareRegExps_ = function(a, b, mismatchKeys, mismatchVal
   return (mismatchValues.length === 0);
 };
 
+var __Jasmine_been_here_before__ = new WeakMap();
+
 jasmine.Env.prototype.compareObjects_ = function(a, b, mismatchKeys, mismatchValues) {
-  if (a.__Jasmine_been_here_before__ === b && b.__Jasmine_been_here_before__ === a) {
+  if (__Jasmine_been_here_before__.get(a) === b && __Jasmine_been_here_before__.get(b) === a) {
     return true;
   }
 
-  a.__Jasmine_been_here_before__ = b;
-  b.__Jasmine_been_here_before__ = a;
+  __Jasmine_been_here_before__.set(a,b);
+  __Jasmine_been_here_before__.set(b,a);
 
   var hasKey = function(obj, keyName) {
     return obj !== null && obj[keyName] !== jasmine.undefined;
@@ -932,8 +934,8 @@ jasmine.Env.prototype.compareObjects_ = function(a, b, mismatchKeys, mismatchVal
     mismatchValues.push("arrays were not the same length");
   }
 
-  delete a.__Jasmine_been_here_before__;
-  delete b.__Jasmine_been_here_before__;
+  __Jasmine_been_here_before__.delete(a);
+  __Jasmine_been_here_before__.delete(b);
   return (mismatchKeys.length === 0 && mismatchValues.length === 0);
 };
 
