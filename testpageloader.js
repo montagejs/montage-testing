@@ -74,12 +74,20 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     loadTest: {
         value: function(promiseForFrameLoad, test) {
-            var pageFirstDraw = Promise.defer();
+            
+            var pageFirstDraw = {};            
+            var pageFirstDrawPromise = new Promise(function(resolve, reject) {
+                pageFirstDraw.resolve = resolve;
+                pageFirstDraw.reject = reject;
+            });
+            
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
                 self = this,
                 src;
+                
+            pageFirstDraw.promise = pageFirstDrawPromise;
 
             if (!timeoutLength) {
                 timeoutLength = 10000;
@@ -160,8 +168,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             defaultEventManager = exports.defaultEventManager;
                         });
 
-                    })
-                    .done();
+                    });
                 };
             });
 
@@ -171,7 +178,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 .then(function(self) {
                     return self;
                 })
-                .fail(function(reason) {
+                .catch(function(reason) {
                     console.error(testName + " - " + reason.message);
                     return self;
                 });
@@ -181,7 +188,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     loadFrame: {
         value: function(options) {
             var self = this, src;
-            var frameLoad = Promise.defer();
+            var frameLoad = {};            
+            var frameLoadPromise = new Promise(function(resolve, reject) {
+                frameLoad.resolve = resolve;
+                frameLoad.reject = reject;
+            });
+            frameLoad.promise = frameLoadPromise;
+            
             var callback = function() {
                 frameLoad.resolve(self.window);
                 if (self.testWindow) {
@@ -226,7 +239,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     nextDraw: {
         value: function(numDraws, forceDraw) {
             var theTestPage = this,
-                deferred = Promise.defer();
+                deferred = {},
+                deferredPromise = new Promise(function(resolve, reject) {
+                    deferred.resolve = resolve;
+                    deferred.reject = reject;
+                });
+                
+            deferred.promise = deferredPromise;
 
             this.drawHappened = false;
 
