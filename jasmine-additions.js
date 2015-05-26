@@ -107,11 +107,12 @@ jasmine.Block.prototype.execute = function (onComplete) {
         spec.fail('`it` block returns non-promise: ' + result);
         onComplete();
     } else {
-        result.then(function (value) {
+        return result.then(function (value) {
             if (value !== undefined) {
                 spec.fail('Promise fulfilled with unexpected value: ' + value);
             }
             onComplete();
+            return this;
         }, function (error) {
             spec.fail(error);
             onComplete();
