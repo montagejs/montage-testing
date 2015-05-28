@@ -7,7 +7,7 @@
   },
   "main": "run",
   "dependencies": {
-    "montage": "~0.14.0",
+    "montage": "marchant/montage.git#montage-bluebird",
     "collections": "~1.2.2"
   }
 }
