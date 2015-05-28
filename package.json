@@ -8,6 +8,6 @@
   "main": "run",
   "dependencies": {
     "montage": "~0.14.0",
-    "weak-map": "~1.0.0"
+    "collections": "~1.2.2"
   }
 }
