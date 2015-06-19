@@ -356,7 +356,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             };
             spyOn(buttonSpy, 'doSomething');
 
-            var actionListener = Montage.create(ActionEventListener).initWithHandler_action_(buttonSpy, "doSomething");
+            var actionListener = new ActionEventListener().initWithHandler_action_(buttonSpy, "doSomething");
             component.addEventListener(type, actionListener);
 
             return buttonSpy.doSomething;
