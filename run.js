@@ -1,6 +1,6 @@
 /*global jasmine, queryString */
 var Promise = require("montage/core/promise").Promise;
-var WeakMap = require("weak-map");
+var WeakMap = require("collections/weak-map");
 
 exports.run = function( suiteRequire, modules ) {
 
