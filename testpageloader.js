@@ -3,7 +3,7 @@
  */
 
 var Montage = require("montage").Montage;
-var dom = require("montage/core/dom");
+var Point = require("montage/core/geometry/point").Point;
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
 var MutableEvent = require("montage/core/event/mutable-event").MutableEvent;
 var Promise = require("montage/core/promise").Promise;
@@ -74,19 +74,19 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     loadTest: {
         value: function(promiseForFrameLoad, test) {
-            
-            var pageFirstDraw = {};            
+
+            var pageFirstDraw = {};
             var pageFirstDrawPromise = new Promise(function(resolve, reject) {
                 pageFirstDraw.resolve = resolve;
                 pageFirstDraw.reject = reject;
             });
-            
+
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
                 self = this,
                 src;
-                
+
             pageFirstDraw.promise = pageFirstDrawPromise;
 
             if (!timeoutLength) {
@@ -188,13 +188,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     loadFrame: {
         value: function(options) {
             var self = this, src;
-            var frameLoad = {};            
+            var frameLoad = {};
             var frameLoadPromise = new Promise(function(resolve, reject) {
                 frameLoad.resolve = resolve;
                 frameLoad.reject = reject;
             });
             frameLoad.promise = frameLoadPromise;
-            
+
             var callback = function() {
                 frameLoad.resolve(self.window);
                 if (self.testWindow) {
@@ -244,7 +244,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     deferred.resolve = resolve;
                     deferred.reject = reject;
                 });
-                
+
             deferred.promise = deferredPromise;
 
             this.drawHappened = false;
@@ -986,7 +986,7 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
 
     positionOfElement: {
         value: function(element) {
-            return dom.convertPointFromNodeToPage(element);
+            return Point.convertPointFromNodeToPage(element);
         }
     },
 
