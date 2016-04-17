@@ -1102,7 +1102,7 @@ jasmine.JsApiReporter.prototype.summarize_ = function(suiteOrSpec) {
     type: isSuite ? 'suite' : 'spec',
     children: []
   };
-  
+
   if (isSuite) {
     var children = suiteOrSpec.children();
     for (var i = 0; i < children.length; i++) {
@@ -1909,16 +1909,16 @@ jasmine.PrettyPrinter.prototype.format = function(value) {
       this.emitScalar('HTMLNode');
     } else if (value instanceof Date) {
       this.emitScalar('Date(' + value + ')');
-    } else if (value.__Jasmine_been_here_before__) {
+  } else if (__Jasmine_been_here_before__.get(value)) {
       this.emitScalar('<circular reference: ' + (jasmine.isArray_(value) ? 'Array' : 'Object') + '>');
     } else if (jasmine.isArray_(value) || typeof value == 'object') {
-      value.__Jasmine_been_here_before__ = true;
+      __Jasmine_been_here_before__.set(value, true);
       if (jasmine.isArray_(value)) {
         this.emitArray(value);
       } else {
         this.emitObject(value);
       }
-      delete value.__Jasmine_been_here_before__;
+      __Jasmine_been_here_before__.delete(value);
     } else {
       this.emitScalar(value.toString());
     }
@@ -1931,7 +1931,7 @@ jasmine.PrettyPrinter.prototype.iterateObject = function(obj, fn) {
   for (var property in obj) {
     if (!obj.hasOwnProperty(property)) continue;
     if (property == '__Jasmine_been_here_before__') continue;
-    fn(property, obj.__lookupGetter__ ? (obj.__lookupGetter__(property) !== jasmine.undefined && 
+    fn(property, obj.__lookupGetter__ ? (obj.__lookupGetter__(property) !== jasmine.undefined &&
                                          obj.__lookupGetter__(property) !== null) : false);
   }
 };
@@ -2063,7 +2063,7 @@ jasmine.Queue.prototype.next_ = function() {
 
   while (goAgain) {
     goAgain = false;
-    
+
     if (self.index < self.blocks.length && !(this.abort && !this.ensured[self.index])) {
       var calledSynchronously = true;
       var completedSynchronously = false;
@@ -2101,7 +2101,7 @@ jasmine.Queue.prototype.next_ = function() {
       if (completedSynchronously) {
         onComplete();
       }
-      
+
     } else {
       self.running = false;
       if (self.onComplete) {
