@@ -214,7 +214,11 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 }
             };
             
-            src = options.directory + options.testName + ".html";
+            if (options.src) {
+                src = options.src;
+            } else {
+                src = options.directory + options.testName + ".html";
+            }
             
             if (options.newWindow) {
                 self.testWindow = global.open(src, "test-global");
