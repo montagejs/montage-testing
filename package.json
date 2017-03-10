@@ -1,13 +1,33 @@
 {
   "name": "montage-testing",
-  "version": "0.4.3",
+  "version": "0.4.4",
+  "description": "Package to enable jasmine test using the testacular runner in Montage projects",
+  "license": "BSD-3-Clause",
+  "author": "Montage Studio, inc. (http://montagestudio.com/)",
   "repository": {
-      "type": "git",
-      "url": "https://github.com/montagejs/montage-testing.git"
+    "type": "git",
+    "url": "https://github.com/montagejs/montage-testing.git"
+  },
+  "dependencies": {
+    "js-beautify": "^1.6.11",
+    "montage": "^16.0.3",
+    "mr": "^16.1.0"
   },
   "main": "run",
-  "dependencies": {
-    "montage": "montagejs/montage#84f5215d052aff8200db3b94f7740f2b2d9d2f8c",
-    "collections": "~1.2.2"
+  "mappings": {
+    "montage-testing": "./"
+  },
+  "devDependencies": {
+    "jasmine-console-reporter": "^1.2.7",
+    "jasmine-core": "^2.5.2",
+    "karma": "^1.5.0",
+    "karma-chrome-launcher": "^2.0.0",
+    "karma-coverage": "^1.1.1",
+    "karma-firefox-launcher": "^1.0.1",
+    "karma-jasmine": "^1.1.0",
+    "karma-phantomjs-launcher": "^1.0.2"
+  },
+  "scripts": {
+    "test": "node test/run-node.js"
   }
 }
