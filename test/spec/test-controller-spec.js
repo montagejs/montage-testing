@@ -1,4 +1,4 @@
-
+/*global require,exports,describe,it,expect */
 describe("test-controller", function () {
 	
 	beforeEach(function () {
@@ -9,9 +9,8 @@ describe("test-controller", function () {
 		/* ... Tear it down ... */
 	});
 
-	var TestController = require('montage-testing/test-controller').TestController;
-	
 	it("load test-controller module", function () {
-		expect(typeof TestController).toEqual("function");
+	    var TestController = require('montage-testing/test-controller').TestController;
+	    expect(typeof TestController).toEqual("function");
 	});
 });
