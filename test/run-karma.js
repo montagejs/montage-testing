@@ -2,6 +2,9 @@ var global = typeof window !== 'undefined' ? window : eval('this');
 
 // Bootsrap Karma
 if (global.__karma__) {
+    
+    //jasmine.DEFAULT_TIMEOUT_INTERVAL = 100000;
+    
     global.__karma__.loaded = function() {
         console.log('karma loaded');
     };
@@ -85,7 +88,7 @@ function injectBase(href) {
 }
 
 injectBase('/base/test/');
-injectScript('../node_modules/mr/bootstrap.js', 'run', function (err) {
+injectScript('../node_modules/mr/bootstrap.js', 'all', function (err) {
     if (err) {
         throw err;
     }
