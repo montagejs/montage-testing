@@ -92,7 +92,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 pageFirstDraw.resolve = resolve;
                 pageFirstDraw.reject = reject;
             });
-
+            
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
@@ -110,7 +110,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             promiseForFrameLoad.then( function(frame) {
                 // implement global function that montage is looking for at load
                 // this is little bit ugly and I'd like to find a better solution
-
+                
                 self.global.montageWillLoad = function() {
                     var firstDraw = true;
                     self.require.async("montage/ui/component").then(function (COMPONENT) {
@@ -275,6 +275,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if(forceDraw) {
                 this.rootComponent.drawTree();
             }
+
             return deferred.promise.timeout(1000);
         }
     },
@@ -282,28 +283,34 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     waitForDraw: {
         value: function(numDraws, forceDraw) {
             var theTestPage = this;
-            this.drawHappened = false;
+            theTestPage.drawHappened = false;
+            numDraws = numDraws || 1;
 
-            if (!numDraws) {
-                numDraws = 1;
-            }
+            return new Promise(function (resolve, reject) {
 
-            waitsFor(function() {
-                return theTestPage.drawHappened >= numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
+                (function waitForDraw(done) {
+                    var hasDraw = theTestPage.drawHappened >= numDraws;
+                    if (hasDraw) {  
+                        resolve(theTestPage.drawHappened);
+                    } else {
+                        setTimeout(function () {
+                            waitForDraw(done);
+                        });
+                    }
+                }());
+
+                if (forceDraw) {
+                    theTestPage.rootComponent.drawTree();
+                }
+            });
         }
     },
 
     waitForComponentDraw: {
         value: function(component, numDraws, forceDraw) {
-            if (!numDraws) {
-                numDraws = 1;
-            }
-
+            var theTestPage = this;
             var currentDraw = component.draw;
+            numDraws = numDraws || 1;
 
             if (!currentDraw.oldDraw) {
                 component.draw = function draw() {
@@ -314,12 +321,23 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
             component.draw.drawHappened = 0;
 
-            waitsFor(function() {
-                return component.draw.drawHappened == numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
+            return new Promise(function (resolve, reject) {
+
+                (function waitForDraw(done) {
+                    var hasDraw = component.draw.drawHappened == numDraws;
+                    if (hasDraw) {  
+                        resolve(theTestPage.drawHappened);
+                    } else {
+                        setTimeout(function () {
+                            waitForDraw(done);
+                        });
+                    }
+                }());
+
+                if (forceDraw) {
+                    theTestPage.rootComponent.drawTree();
+                }
+            });
         }
     },
 
@@ -640,8 +658,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             // Mouse move doesn't happen instantly
-            waits(10);
-            runs(function() {
+            setTimeout(function() {
                 var ax = element.offsetLeft + offsetX/2,
                 ay = element.offsetTop + offsetY/2,
                 bx = element.offsetLeft + offsetX,
@@ -881,29 +898,25 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             console.log("TestPageLoader.queueTest() - " + testName);
             testPage = TestPageLoader.testPage;
             options = TestPageLoader.options(testName, options, callback);
-
             describe(testName, function() {
-                it("should load", function(done) {
-                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
+
+                beforeAll(function (done) {
+                    console.group(testName);
+                    testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
                        expect(theTestPage.loaded).toBe(true);
                        done();
                    });
-                });
+                })
 
                 // add the rest of the assertions
                 options.callback(testPage);
 
-                it("should unload", function(done) {
+                afterAll(function(done) {
                    testPage.unloadTest();
                    console.groupEnd();
-                   expect(true).toBe(true);
                    done();
                 });
             });
-
-
-            //testPage.testQueue.push(options);
-            //return testPage;
         }
     },
 
