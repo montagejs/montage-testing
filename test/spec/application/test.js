@@ -34,7 +34,6 @@ exports.Test = Montage.specialize( {
     svg:{
         value: null
     },
-
     html:{
         value: null
     }
