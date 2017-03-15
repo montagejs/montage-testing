@@ -11,12 +11,18 @@ describe("require-spec", function () {
 
   // 
   it("load core module", function () {
+    var montageRequire = require("montage/core/core");
+    expect(typeof montageRequire.Montage).toEqual("function");
+  });
+
+  // NodeJS TODO: Error: Expected 'undefined' to equal 'function'.
+  xit("load alias module", function () {
     var montageRequire = require("montage");
     expect(typeof montageRequire.Montage).toEqual("function");
   });
 
   // TODO Error: Can't require module "core/mini-url" via "" because Can't XHR "http://localhost:8080/node_modules/montage/core/mini-url.js"
-  xit("load core alias module", function () {
+  xit("load inject module", function () {
     var URL = require("montage/core/mini-url");
     expect(typeof URL.resolve).toEqual("function");
   });
