@@ -461,7 +461,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -484,7 +484,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -513,7 +513,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -568,7 +568,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -623,7 +623,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -748,8 +748,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 self._eventsInOrder = [];
                 self._touchesInProgress = [];
                 var foo = function() {
-                    waits(10);
-                    runs(function() {
+                    setTimeout(function() {
                         var events = self._eventsInOrder[self._nextStepTime];
                         if (events) {
                             console.log("********** nextStepTime:" + self._nextStepTime + " **********");
@@ -771,7 +770,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             self._eventsInOrder = null;
                             self._nextStepTime = 0;
                         }
-                    });
+                    }, 10);
                 };
                 foo();
             }
