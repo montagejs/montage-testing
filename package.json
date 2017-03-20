@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "js-beautify": "^1.6.11",
-    "montage": "^16.0.3",
+    "montage": "hthetiot/montage#upgrade_test",
     "mr": "^16.1.0",
     "jasmine-console-reporter": "^1.2.7",
     "jasmine-core": "^2.5.2"
