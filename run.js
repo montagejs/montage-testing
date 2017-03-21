@@ -65,37 +65,14 @@ global.expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, globa
     return expect(spy);
 };
 
-global.queryString = function queryString(parameter) {
-    var i, key, value, equalSign;
-    var params = [];
-
-    for (i=0; i<params.length;i++) {
-        equalSign = params[i].indexOf('=');
-        if (equalSign < 0) {
-            key = params[i];
-            if (key == parameter) {
-                value = true;
-                break;
-            }
-        }
-        else {
-            key = params[i].substring(0, equalSign);
-            if (key == parameter) {
-                value = params[i].substring(equalSign+1);
-                break;
-            }
-        }
-    }
-    return value;
-}
-
 exports.run = function run( suiteRequire, modules) {
-    var spec = global.queryString("spec");
 
     // Filter node:false
     modules = modules.filter(function (module) {
         if (typeof module === "object") {
             if (module.node === false && typeof process !== "undefined") {
+                return false;
+            } else if (module.browser === false && typeof window !== "undefined") {
                 return false;
             }
         }
@@ -108,19 +85,13 @@ exports.run = function run( suiteRequire, modules) {
         }
     });
 
-    if (spec) {
-        return suiteRequire.async(decodeURIComponent(spec)).then(function() {
-            jasmine.getEnv().execute();
-        });
-    } else {
-        return Promise.all(modules.map(suiteRequire.deepLoad)).then(function () {
-            modules.forEach(suiteRequire);
-        }).then(function() {
-            if (global.__karma__) {
-                global.__karma__.start();
-            } else {
-                jasmine.getEnv().execute();    
-            }
-        });
-    }
+    return Promise.all(modules.map(suiteRequire.deepLoad)).then(function () {
+        modules.forEach(suiteRequire);
+    }).then(function() {
+        if (global.__karma__) {
+            global.__karma__.start();
+        } else {
+            jasmine.getEnv().execute();    
+        }
+    });
 }
