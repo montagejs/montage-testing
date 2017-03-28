@@ -65,7 +65,7 @@ global.expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, globa
     return expect(spy);
 };
 
-exports.run = function run( suiteRequire, modules) {
+exports.run = function run (suiteRequire, modules) {
 
     // Filter node:false
     modules = modules.filter(function (module) {
