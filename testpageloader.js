@@ -933,12 +933,12 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             options.testName = testName;
             // FIXME Hack to get current directory
             var dir;
-            if (this.options.caller.caller.arguments
-                    && this.options.caller.caller.arguments[2]
-                    && this.options.caller.caller.arguments[2].directory) {
-                dir = this.options.caller.caller.arguments[2].directory
+            if (this.options.caller.arguments
+                    && this.options.caller.arguments[2]
+                    && this.options.caller.arguments[2].directory) {
+                dir = this.options.caller.arguments[2].directory
             } else {
-                dir = this.options.caller.caller.caller.arguments[2].directory
+                dir = this.options.caller.caller.arguments[2].directory
             }
             options.directory = dir;
 
