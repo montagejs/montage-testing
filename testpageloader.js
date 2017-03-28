@@ -1,7 +1,8 @@
+/* global describe, spyOn, expect, beforeAll, afterAll, testName */
+
 /**
  * @see https://developer.mozilla.org/en/DOM/HTMLIFrameElement
  */
-
 var Montage = require("montage").Montage;
 var Point = require("montage/core/geometry/point").Point;
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
@@ -148,8 +149,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 }
                             };
 
-                            var pause = queryString("pause");
-                            if (firstDraw && decodeURIComponent(pause) === "true") {
+                            if (firstDraw) {
                                 var handleKeyUp = function(event) {
                                     if (event.which === 82) {
                                         self.document.removeEventListener("keyup", handleKeyUp,false);
@@ -267,11 +267,12 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             theTestPage._drawHappened = function() {
-                if(theTestPage.drawHappened == numDraws) {
+                if(theTestPage.drawHappened === numDraws) {
                     deferred.resolve(numDraws);
                     theTestPage._drawHappened = null;
                 }
-            }
+            };
+
             if(forceDraw) {
                 this.rootComponent.drawTree();
             }
@@ -316,7 +317,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 component.draw = function draw() {
                     draw.drawHappened++;
                     return draw.oldDraw.apply(this, arguments);
-                }
+                };
+
                 component.draw.oldDraw = currentDraw;
             }
             component.draw.drawHappened = 0;
@@ -324,7 +326,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             return new Promise(function (resolve, reject) {
 
                 (function waitForDraw(done) {
-                    var hasDraw = component.draw.drawHappened == numDraws;
+                    var hasDraw = component.draw.drawHappened === numDraws;
                     if (hasDraw) {  
                         resolve(theTestPage.drawHappened);
                     } else {
@@ -723,7 +725,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 eventInfo.clientY = clientY;
                             }
                         } else {
-                            eventInfo[key] = step[stepKey];
+                            eventInfo[stepKey] = step[stepKey];
                         }
                     }
                     console.log("_scheduleEventForTime", eventInfo);
@@ -814,11 +816,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
             // at the end we know all the touches
             for(var eventType in eventInfos) {
-                eventInfo = eventInfos[eventType];
-                eventInfo.touches = this._touchesInProgress;
-                // this is not strictly correct
-                eventInfo.targetTouches = eventInfo.changedTouches;
-                this.touchEvent(eventInfo, eventType);
+                if (eventInfos.hasOwnProperty(eventType)) {
+                    eventInfo = eventInfos[eventType];
+                    eventInfo.touches = this._touchesInProgress;
+                    // this is not strictly correct
+                    eventInfo.targetTouches = eventInfo.changedTouches;
+                    this.touchEvent(eventInfo, eventType);
+                }
             }
         }
     },
@@ -895,7 +899,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     queueTest: {
         value: function(testName, options, callback) {
             console.log("TestPageLoader.queueTest() - " + testName);
-            testPage = TestPageLoader.testPage;
+            var testPage = global.testPage = TestPageLoader.testPage;
             options = TestPageLoader.options(testName, options, callback);
             describe(testName, function() {
 
@@ -905,7 +909,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                        expect(theTestPage.loaded).toBe(true);
                        done();
                    });
-                })
+                });
 
                 // add the rest of the assertions
                 options.callback(testPage);
@@ -925,21 +929,22 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof options === "function") {
                 options = { callback: options};
             } else {
-                if (options == null) {
-                    options = {};
-                }
+                options = options || {};
                 options.callback = callback;
             }
             options.testName = testName;
             // FIXME Hack to get current directory
             var dir;
-            if (this.options.caller.arguments
-                    && this.options.caller.arguments[2]
-                    && this.options.caller.arguments[2].directory) {
-                dir = this.options.caller.arguments[2].directory
+            if (
+                this.options.caller.arguments &&
+                    this.options.caller.arguments[2] &&
+                        this.options.caller.arguments[2].directory
+            ) {
+                dir = this.options.caller.arguments[2].directory;
             } else {
-                dir = this.options.caller.caller.arguments[2].directory
+                dir = this.options.caller.caller.arguments[2].directory;
             }
+
             options.directory = dir;
 
             return options;

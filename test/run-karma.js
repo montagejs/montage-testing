@@ -1,4 +1,10 @@
-var global = typeof window !== 'undefined' ? window : eval('this');
+/* global global:true,  __dirname, jasmineRequire */
+
+/*jshint evil:true */
+// reassigning causes eval to not use lexical scope.
+var globalEval = eval,
+    global = globalEval('this');
+/*jshint evil:false */
 
 // Bootsrap Karma
 if (global.__karma__) {
@@ -20,7 +26,9 @@ if (global.__karma__) {
     var jasmineInterface = jasmineRequire.interface(jasmine, jasmineEnv);
     global.jasmine = jasmine;
     for (var property in jasmineInterface) {
-        global[property] = jasmineInterface[property];
+        if (jasmineInterface.hasOwnProperty(property)) {
+           global[property] = jasmineInterface[property];
+        }
     }   
 
     // Default reporter
@@ -48,14 +56,14 @@ global.queryString = function queryString(parameter) {
         equalSign = params[i].indexOf('=');
         if (equalSign < 0) {
             key = params[i];
-            if (key == parameter) {
+            if (key === parameter) {
                 value = true;
                 break;
             }
         }
         else {
             key = params[i].substring(0, equalSign);
-            if (key == parameter) {
+            if (key === parameter) {
                 value = decodeURIComponent(params[i].substring(equalSign+1));
                 break;
             }
@@ -65,7 +73,7 @@ global.queryString = function queryString(parameter) {
 };
 
 function injectScript(src, module, callback) {
-    const script = document.createElement('script');
+    var script = document.createElement('script');
     script.async = true;
     script.src = src;
     script.setAttribute('data-module', module);
@@ -75,14 +83,14 @@ function injectScript(src, module, callback) {
     script.addEventListener('error', function(err) { 
         callback(err, module);
     });
-    script.addEventListener('abort', function() {    
+    script.addEventListener('abort', function(err) {    
         callback(err, module);
     });
     document.head.appendChild(script);
 }
 
 function injectBase(href) {
-    const script = document.createElement('base');
+    var script = document.createElement('base');
     script.href = href;
     document.head.appendChild(script);
 }

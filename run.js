@@ -1,3 +1,4 @@
+/* global waitsFor, runs, spyOn, expect, jasmine, Promise */
 //
 //
 //
@@ -16,7 +17,7 @@ global.createJavaScriptContext = function createJavaScriptContext() {
     iframe.parentNode.removeChild(iframe);
 
     return context;
-}
+};
 
 global.waitsThen = function waitsThen(promise, resolved) {
     waitsFor(function () {
@@ -24,8 +25,8 @@ global.waitsThen = function waitsThen(promise, resolved) {
     }, "promise", 500);
     runs(function () {
         resolved(promise.valueOf());
-    })
-}
+    });
+};
 
 global.expectationToDispatch = function expectationToDispatch(object, expectation, handleEvent) {
 
@@ -45,13 +46,12 @@ global.expectationToDispatch = function expectationToDispatch(object, expectatio
         } else {
             expect(handler.handleEvent).toHaveBeenCalled();
         }
-    }
-}
+    };
+};
 
 global.addMontageMetadataToProto = function (objectName, moduleId, proto) {
     Object.defineProperty(proto, "_montage_metadata", { value: { moduleId: moduleId, objectName: objectName, isInstance: false }, enumerable: false});
 };
-
 
 global.expectConsoleCallsFrom = function expectConsoleCallsFrom(procedure, global, logLevel) {
     logLevel = logLevel ? logLevel : "log";
@@ -94,4 +94,4 @@ exports.run = function run (suiteRequire, modules) {
             jasmine.getEnv().execute();    
         }
     });
-}
+};
