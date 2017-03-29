@@ -1,4 +1,4 @@
-/* global describe, spyOn, expect, beforeAll, afterAll, testName */
+/* global describe, spyOn, expect, beforeAll, afterAll, testName, queryString */
 
 /**
  * @see https://developer.mozilla.org/en/DOM/HTMLIFrameElement
@@ -149,7 +149,8 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 }
                             };
 
-                            if (firstDraw) {
+                            var pause = queryString("pause");
+                            if (firstDraw && pause === "true") {
                                 var handleKeyUp = function(event) {
                                     if (event.which === 82) {
                                         self.document.removeEventListener("keyup", handleKeyUp,false);
@@ -162,7 +163,6 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             } else {
                                 continueDraw();
                             }
-
 
                             self.willNeedToDraw = false;
                         };
