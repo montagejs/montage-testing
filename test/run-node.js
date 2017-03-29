@@ -29,6 +29,14 @@ var consoleReporter = new JasmineConsoleReporter({
 });
 jasmineEnv.addReporter(consoleReporter);
 
+// Exit code
+var exitCode = 0;
+jasmineEnv.addReporter({
+    specDone: function(result) {
+        exitCode = exitCode || result.status === 'failed';
+    }
+});
+
 // Execute
 var mrRequire = require('mr/bootstrap-node');
 var PATH = require("path");
@@ -36,5 +44,6 @@ mrRequire.loadPackage(PATH.join(__dirname, ".")).then(function (mr) {
     return mr.async("all");
 }).then(function () {
 	console.log('Done');
+    process.exit(exitCode);
 }).thenReturn();
 
