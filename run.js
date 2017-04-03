@@ -88,10 +88,19 @@ exports.run = function run (suiteRequire, modules) {
     return Promise.all(modules.map(suiteRequire.deepLoad)).then(function () {
         modules.forEach(suiteRequire);
     }).then(function() {
-        if (global.__karma__) {
-            global.__karma__.start();
-        } else {
-            jasmine.getEnv().execute();    
-        }
+        return new Promise(function (resolve, reject) {
+            var jasmineEnv = jasmine.getEnv();
+            jasmineEnv.addReporter({
+                jasmineDone: function(result) {
+                    resolve();
+                }
+            });
+
+            if (global.__karma__) {
+                global.__karma__.start();
+            } else {
+                jasmine.getEnv().execute();    
+            }
+        });
     });
 };
