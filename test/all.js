@@ -1,5 +1,5 @@
 console.log('montage-testing', 'Start');
-return require("montage-testing").run(require, [
+module.exports = require("montage-testing").run(require, [
     'spec/require-spec',
     'spec/test-controller-spec',
     {"name": 'spec/testpageloader-spec', "node": false}
