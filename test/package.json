@@ -1,0 +1,7 @@
+{
+	"main": "all",
+  	"mappings": {
+    	"montage": "../node_modules/montage",
+    	"montage-testing": "../"
+  	}
+}

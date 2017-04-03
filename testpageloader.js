@@ -1,7 +1,8 @@
+/* global describe, spyOn, expect, beforeAll, afterAll, testName, queryString */
+
 /**
  * @see https://developer.mozilla.org/en/DOM/HTMLIFrameElement
  */
-
 var Montage = require("montage").Montage;
 var Point = require("montage/core/geometry/point").Point;
 var ActionEventListener = require("montage/core/event/action-event-listener").ActionEventListener;
@@ -17,17 +18,29 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     constructor: {
         value: function TestPageLoader() {
-            if (typeof window.testpage === "undefined") {
+
+            if (!global.document) {
+                throw new Error('TestPageLoader require browser enviroment');
+            } else if (typeof global.testpage === "undefined") {
                 if (!this.iframe) {
-                    this.iframe = document.createElement("iframe");
+                    this.iframe = global.document.createElement("iframe");
                     this.iframe.id = "testpage";
-                    document.body.appendChild(this.iframe);
+                    
+                    this.iframe.style.width = '100%';
+                    this.iframe.style.height = '100%';
+                    this.iframe.style.left = '75%';
+                    this.iframe.style.top = '0';
+                    this.iframe.style.position = 'absolute';
+                    this.iframe.style.border = 'none';
+                    this.iframe.style.zIndex = '100';
+
+                    global.document.body.appendChild(this.iframe);
                 }
-                window.testpage = this;
+                global.testpage = this;
                 this.loaded = false;
                 return this;
             } else {
-                return window.testpage;
+                return global.testpage;
             }
         }
     },
@@ -80,7 +93,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 pageFirstDraw.resolve = resolve;
                 pageFirstDraw.reject = reject;
             });
-
+            
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
@@ -98,24 +111,23 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             promiseForFrameLoad.then( function(frame) {
                 // implement global function that montage is looking for at load
                 // this is little bit ugly and I'd like to find a better solution
-                self.window.montageWillLoad = function() {
+                
+                self.global.montageWillLoad = function() {
                     var firstDraw = true;
-                    self.require.async("montage/ui/component")
-                    .then(function (COMPONENT) {
+                    self.require.async("montage/ui/component").then(function (COMPONENT) {
                         var root = COMPONENT.__root__;
                         self.rootComponent = root;
                         // override the default drawIfNeeded behaviour
                         var originalDrawIfNeeded = root.drawIfNeeded;
                         root.drawIfNeeded = function() {
-
                             var continueDraw = function() {
                                 originalDrawIfNeeded.call(root);
                                 self.drawHappened++;
                                 if(firstDraw) {
                                     self.loaded = true;
                                     // assign the application delegate to test so that the convenience methods work
-                                    if (! self.window.test && self.require("montage/core/application").application) {
-                                        self.window.test = self.require("montage/core/application").application.delegate;
+                                    if (! self.global.test && self.require("montage/core/application").application) {
+                                        self.global.test = self.require("montage/core/application").application.delegate;
                                     }
                                     if (typeof testCallback === "function") {
                                         if (test.firstDraw) {
@@ -138,7 +150,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             };
 
                             var pause = queryString("pause");
-                            if (firstDraw && decodeURIComponent(pause) === "true") {
+                            if (firstDraw && pause === "true") {
                                 var handleKeyUp = function(event) {
                                     if (event.which === 82) {
                                         self.document.removeEventListener("keyup", handleKeyUp,false);
@@ -152,7 +164,6 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 continueDraw();
                             }
 
-
                             self.willNeedToDraw = false;
                         };
                         var originalAddToDrawList = root._addToDrawList;
@@ -163,8 +174,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
                         defaultEventManager = null;
 
-                        return self.require.async("montage/core/event/event-manager")
-                        .then(function (exports) {
+                        return self.require.async("montage/core/event/event-manager").then(function (exports) {
                             defaultEventManager = exports.defaultEventManager;
                         });
 
@@ -174,8 +184,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
 
             var promiseForTestPage = pageFirstDraw.promise.timeout(timeoutLength);
-            return promiseForTestPage
-                .then(function(self) {
+            return promiseForTestPage.then(function(self) {
                     return self;
                 })
                 .catch(function(reason) {
@@ -187,6 +196,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     loadFrame: {
         value: function(options) {
+
             var self = this, src;
             var frameLoad = {};
             var frameLoadPromise = new Promise(function(resolve, reject) {
@@ -196,21 +206,23 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             frameLoad.promise = frameLoadPromise;
 
             var callback = function() {
-                frameLoad.resolve(self.window);
+                frameLoad.resolve(self.global);
                 if (self.testWindow) {
                     self.testWindow.removeEventListener("load", callback, true);
                 } else {
                     self.iframe.removeEventListener("load", callback, true);
                 }
             };
+            
             if (options.src) {
-                src = "../test/" + options.src;
+                src = options.src;
             } else {
                 src = options.directory + options.testName + ".html";
             }
+            
             if (options.newWindow) {
-                self.testWindow = window.open(src, "test-window");
-                window.addEventListener("unload", function() {
+                self.testWindow = global.open(src, "test-global");
+                global.addEventListener("unload", function() {
                     self.unloadTest(testName);
                 }, false);
                 self.testWindow.addEventListener("load", callback, true);
@@ -218,6 +230,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 self.iframe.src = src;
                 self.iframe.addEventListener("load", callback, true);
             }
+
             return frameLoad.promise;
         }
     },
@@ -254,14 +267,16 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             theTestPage._drawHappened = function() {
-                if(theTestPage.drawHappened == numDraws) {
+                if(theTestPage.drawHappened === numDraws) {
                     deferred.resolve(numDraws);
                     theTestPage._drawHappened = null;
                 }
-            }
+            };
+
             if(forceDraw) {
                 this.rootComponent.drawTree();
             }
+
             return deferred.promise.timeout(1000);
         }
     },
@@ -269,44 +284,62 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     waitForDraw: {
         value: function(numDraws, forceDraw) {
             var theTestPage = this;
-            this.drawHappened = false;
+            theTestPage.drawHappened = false;
+            numDraws = numDraws || 1;
 
-            if (!numDraws) {
-                numDraws = 1;
-            }
+            return new Promise(function (resolve, reject) {
 
-            waitsFor(function() {
-                return theTestPage.drawHappened >= numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
+                (function waitForDraw(done) {
+                    var hasDraw = theTestPage.drawHappened >= numDraws;
+                    if (hasDraw) {  
+                        resolve(theTestPage.drawHappened);
+                    } else {
+                        setTimeout(function () {
+                            waitForDraw(done);
+                        });
+                    }
+                }());
+
+                if (forceDraw) {
+                    theTestPage.rootComponent.drawTree();
+                }
+            });
         }
     },
 
     waitForComponentDraw: {
         value: function(component, numDraws, forceDraw) {
-            if (!numDraws) {
-                numDraws = 1;
-            }
-
+            var theTestPage = this;
             var currentDraw = component.draw;
+            numDraws = numDraws || 1;
 
             if (!currentDraw.oldDraw) {
                 component.draw = function draw() {
                     draw.drawHappened++;
                     return draw.oldDraw.apply(this, arguments);
-                }
+                };
+
                 component.draw.oldDraw = currentDraw;
             }
             component.draw.drawHappened = 0;
 
-            waitsFor(function() {
-                return component.draw.drawHappened == numDraws;
-            }, "component drawing",1000);
-            if(forceDraw) {
-                this.rootComponent.drawTree();
-            }
+            return new Promise(function (resolve, reject) {
+
+                (function waitForDraw(done) {
+                    var hasDraw = component.draw.drawHappened === numDraws;
+                    if (hasDraw) {  
+                        resolve(theTestPage.drawHappened);
+                    } else {
+                        setTimeout(function () {
+                            waitForDraw(done);
+                        });
+                    }
+                }());
+
+                if (forceDraw) {
+                    theTestPage.rootComponent.drawTree();
+                }
+            });
         }
     },
 
@@ -334,7 +367,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     test: {
         enumerable: false,
         get: function() {
-            return this.window.test;
+            return this.global.test;
         }
     },
 
@@ -348,7 +381,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         }
     },
 
-    window: {
+    global: {
         get: function() {
             if (this.testWindow) {
                 return this.testWindow;
@@ -361,7 +394,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     require: {
         get: function() {
             // Handle transition period from `require` to `mr`.
-            return this.window.mr || this.window.require;
+            return this.global.mr || this.global.require;
         }
     },
 
@@ -430,7 +463,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -453,7 +486,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -482,7 +515,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -537,7 +570,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -580,7 +613,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     clickOrTouch: {
         enumerable: false,
         value: function(eventInfo, callback) {
-            if (window.Touch) {
+            if (global.Touch) {
                 this.touchEvent(eventInfo, "touchstart");
                 this.touchEvent(eventInfo, "touchend");
                 this.mouseEvent(eventInfo, "click");
@@ -592,7 +625,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof callback === "function") {
                 if(this.willNeedToDraw) {
                     this.waitForDraw();
-                    runs(callback);
+                    setTimeout(callback);
                 } else {
                     callback();
                 }
@@ -611,7 +644,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             var eventFactoryName = "mouseEvent";
 
             if (options) {
-                if(options.pointerType === "touch" || window.Touch) {
+                if(options.pointerType === "touch" || global.Touch) {
                     startEventName = "touchstart";
                     moveEventName = "touchmove";
                     endEventName = "touchend";
@@ -627,8 +660,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
 
             // Mouse move doesn't happen instantly
-            waits(10);
-            runs(function() {
+            setTimeout(function() {
                 var ax = element.offsetLeft + offsetX/2,
                 ay = element.offsetTop + offsetY/2,
                 bx = element.offsetLeft + offsetX,
@@ -693,7 +725,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                                 eventInfo.clientY = clientY;
                             }
                         } else {
-                            eventInfo[key] = step[stepKey];
+                            eventInfo[stepKey] = step[stepKey];
                         }
                     }
                     console.log("_scheduleEventForTime", eventInfo);
@@ -718,8 +750,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 self._eventsInOrder = [];
                 self._touchesInProgress = [];
                 var foo = function() {
-                    waits(10);
-                    runs(function() {
+                    setTimeout(function() {
                         var events = self._eventsInOrder[self._nextStepTime];
                         if (events) {
                             console.log("********** nextStepTime:" + self._nextStepTime + " **********");
@@ -741,7 +772,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                             self._eventsInOrder = null;
                             self._nextStepTime = 0;
                         }
-                    });
+                    }, 10);
                 };
                 foo();
             }
@@ -785,11 +816,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             }
             // at the end we know all the touches
             for(var eventType in eventInfos) {
-                eventInfo = eventInfos[eventType];
-                eventInfo.touches = this._touchesInProgress;
-                // this is not strictly correct
-                eventInfo.targetTouches = eventInfo.changedTouches;
-                this.touchEvent(eventInfo, eventType);
+                if (eventInfos.hasOwnProperty(eventType)) {
+                    eventInfo = eventInfos[eventType];
+                    eventInfo.touches = this._touchesInProgress;
+                    // this is not strictly correct
+                    eventInfo.targetTouches = eventInfo.changedTouches;
+                    this.touchEvent(eventInfo, eventType);
+                }
             }
         }
     },
@@ -866,27 +899,27 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
     queueTest: {
         value: function(testName, options, callback) {
             console.log("TestPageLoader.queueTest() - " + testName);
-            testPage = TestPageLoader.testPage;
+            var testPage = global.testPage = TestPageLoader.testPage;
             options = TestPageLoader.options(testName, options, callback);
-
             describe(testName, function() {
-                it("should load", function() {
-                   console.group(testName);
-                   return testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
+
+                beforeAll(function (done) {
+                    console.group(testName);
+                    testPage.loadTest(testPage.loadFrame(options), options).then(function(theTestPage) {
                        expect(theTestPage.loaded).toBe(true);
+                       done();
                    });
                 });
+
                 // add the rest of the assertions
                 options.callback(testPage);
-                it("should unload", function() {
+
+                afterAll(function(done) {
                    testPage.unloadTest();
                    console.groupEnd();
+                   done();
                 });
             });
-
-
-            //testPage.testQueue.push(options);
-            //return testPage;
         }
     },
 
@@ -896,21 +929,22 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             if (typeof options === "function") {
                 options = { callback: options};
             } else {
-                if (options == null) {
-                    options = {};
-                }
+                options = options || {};
                 options.callback = callback;
             }
             options.testName = testName;
             // FIXME Hack to get current directory
             var dir;
-            if (this.options.caller.caller.arguments
-                    && this.options.caller.caller.arguments[2]
-                    && this.options.caller.caller.arguments[2].directory) {
-                dir = this.options.caller.caller.arguments[2].directory
+            if (
+                this.options.caller.arguments &&
+                    this.options.caller.arguments[2] &&
+                        this.options.caller.arguments[2].directory
+            ) {
+                dir = this.options.caller.arguments[2].directory;
             } else {
-                dir = this.options.caller.caller.caller.arguments[2].directory
+                dir = this.options.caller.caller.arguments[2].directory;
             }
+
             options.directory = dir;
 
             return options;
@@ -919,7 +953,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
     testPage: {
         get: function() {
-            var testPage = window.testpage;
+            var testPage = global.testpage;
             if (!testPage) {
                 testPage = new TestPageLoader();
             }
@@ -962,7 +996,7 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
                 this.pageY = elementDelta.y + element.offsetHeight / 2;
 
             } else {
-                 this.target =  window.testpage.window.document;
+                 this.target =  global.testpage.global.document;
             }
             return this;
         }
@@ -1009,7 +1043,6 @@ var EventInfo = exports.EventInfo = Montage.specialize( {
 
 });
 
-
-window.loaded = function() {
-    window.testpage.loaded = true;
+global.loaded = function() {
+    global.testpage.loaded = true;
 };
