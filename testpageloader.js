@@ -170,7 +170,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 .then(function(self) {
                     return self;
                 })
-                .fail(function(reason) {
+                .catch(function(reason) {
                     console.error(testName + " - " + reason.message);
                     return self;
                 });
