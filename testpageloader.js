@@ -154,7 +154,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
                         defaultEventManager = null;
 
-                        return self.require.async("core/event/event-manager")
+                        return self.require.async("montage/core/event/event-manager")
                         .then(function (exports) {
                             defaultEventManager = exports.defaultEventManager;
                         });
