@@ -12,7 +12,8 @@
     "jasmine-console-reporter": "^1.2.7",
     "jasmine-core": "^2.5.2",
     "js-beautify": "^1.6.11",
-    "mr": "^16.1.0"
+    "mr": "git://github.com/montagejs/mr.git#master",
+    "montage": "git://github.com/montagejs/montage.git#master"
   },
   "main": "run",
   "mappings": {
@@ -20,7 +21,6 @@
   },
   "production": true,
   "devDependencies": {
-    "montage": "montagejs/montage#master",
     "karma": "^1.5.0",
     "karma-chrome-launcher": "^2.0.0",
     "karma-coverage": "^1.1.1",
