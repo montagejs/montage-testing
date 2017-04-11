@@ -33,6 +33,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     this.iframe.style.position = 'absolute';
                     this.iframe.style.border = 'none';
                     this.iframe.style.zIndex = '100';
+                    this.iframe.style.pointerEvents = 'none';
 
                     global.document.body.appendChild(this.iframe);
                 }
