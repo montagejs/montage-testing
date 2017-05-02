@@ -35,6 +35,9 @@
     "test": "node test/run-node.js",
     "test:karma": "karma start --no-auto-watch --single-run",
     "test:karma-dev": "karma start --auto-watch --no-single-run",
+    "test:karma-debug": "karma start --no-auto-watch --single-run --browsers=PhantomJS_debug",
+    "test:karma-firefox": "karma start --no-auto-watch --single-run --browsers=firefox",
+    "test:karma-chrome": "karma start --no-auto-watch --single-run --browsers=chrome",
     "test:jasmine": "concurrently \"http-server -a localhost -p 8082\" \"open http://localhost:8082/test/run.html\""
   }
 }
