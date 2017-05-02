@@ -74,6 +74,8 @@ exports.run = function run (suiteRequire, modules) {
                 return false;
             } else if (module.browser === false && typeof window !== "undefined") {
                 return false;
+            } else if (module.karma === false && typeof __karma__ !== "undefined") {
+                return false;
             }
         }
         return true;
