@@ -36,7 +36,7 @@ global.expectationToDispatch = function expectationToDispatch(object, expectatio
 
     if (typeof expectation === "string") {
         // expect event name
-        spyOn(handler, "handleEvent").andCallThrough();
+        spyOn(handler, "handleEvent").and.callThrough();
         object.addEventListener(expectation, handler, false);
     }
 
