@@ -542,9 +542,10 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 // the timestamp of an event.
                 dispatchThroughEventManager = eventInfo.timeStamp != null;
 
+            simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
+
             if (typeof eventInfo.touches !== "undefined") {
                 // if you have a touches array we assume you know what you are doing
-                simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
                 simulatedEvent.touches = eventInfo.touches;
                 simulatedEvent.targetTouches = eventInfo.targetTouches;
                 simulatedEvent.changedTouches = eventInfo.changedTouches;
@@ -554,7 +555,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 touch.clientY = eventInfo.clientY || eventInfo.target.offsetTop;
                 touch.target = eventInfo.target;
                 touch.identifier = eventInfo.identifier || 500;
-                simulatedEvent.initEvent(eventName, true, true, doc.defaultView, 1, null, null, null, null, false, false, false, false, 0, null);
+
                 simulatedEvent.touches = [touch];
                 simulatedEvent.targetTouches = [touch];
                 simulatedEvent.changedTouches = [touch];
@@ -584,27 +585,36 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
         value: function(event, fakeProperties) {
             var fakeEvent;
 
-            fakeEvent = Object.create(event);
+            fakeEvent = Object.create({});
+
+            for (var prop in event) {
+                if (["target", "timeStamp"].indexOf(prop) !== -1) {
+                    continue;
+                }
+
+                if (typeof event[prop] === "function") {
+                    var func = event[prop];
+                    Object.defineProperty(fakeEvent, prop, {
+                        value: function() {
+                            return func.bind(event)(arguments);
+                        },
+                        enumerable: true
+                    });
+                } else {
+                    Object.defineProperty(fakeEvent, prop, {
+                        value: event[prop],
+                        enumerable: true
+                    });
+                }
+            }
+
             Object.defineProperty(fakeEvent, "timeStamp", {
-                value: fakeProperties.timeStamp
+                value: fakeProperties.timeStamp,
+                enumerable: true
             });
             Object.defineProperty(fakeEvent, "target", {
-                value: fakeProperties.target
-            });
-            Object.defineProperty(fakeEvent, "preventDefault", {
-                value: function(){
-                    return event.preventDefault();
-                }
-            });
-            Object.defineProperty(fakeEvent, "stopPropagation", {
-                value: function(){
-                    return event.stopPropagation();
-                }
-            });
-            Object.defineProperty(fakeEvent, "stopImmediatePropagation", {
-                value: function(){
-                    return event.stopImmediatePropagation();
-                }
+                value: fakeProperties.target,
+                enumerable: true
             });
 
             return fakeEvent;
