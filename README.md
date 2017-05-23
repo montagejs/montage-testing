@@ -18,7 +18,7 @@ MontageJS uses some pure unit tests that are straightforward [Jasmine specs][1].
 
  We also test some components by [mocking their dependencies][6].
 
- [1]: https://github.com/montagejs/montage/blob/master/test/core/super-spec.js "Jasmine specs"
+ [1]: https://github.com/montagejs/montage/blob/master/test/all.js "Jasmine specs"
  [2]: https://github.com/montagejs/montage-testing "montage-testing"
  [3]: https://github.com/montagejs/digit "digit"
  [4]: https://github.com/montagejs/digit/blob/master/test/run.html "run-tests"
@@ -27,8 +27,8 @@ MontageJS uses some pure unit tests that are straightforward [Jasmine specs][1].
 
 ## Maintenance
 
-Tests are in the `spec` directory. Use `npm test` to run the tests in
-NodeJS or open `spec/run.html` in a browser. 
+Tests are in the `test` directory. Use `npm test` to run the tests in
+NodeJS or open `test/run.html` in a browser. 
 
 To run the tests in your browser, simply use `npm run test:jasmine`.
 
