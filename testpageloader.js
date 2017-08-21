@@ -316,8 +316,9 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             if (!currentDraw.oldDraw) {
                 component.draw = function draw() {
+                    var result = draw.oldDraw.apply(this, arguments);
                     draw.drawHappened++;
-                    return draw.oldDraw.apply(this, arguments);
+                    return result;
                 };
 
                 component.draw.oldDraw = currentDraw;
@@ -325,15 +326,17 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             component.draw.drawHappened = 0;
 
             return new Promise(function (resolve, reject) {
-
                 (function waitForDraw(done) {
-                    var hasDraw = component.draw.drawHappened === numDraws;
-                    if (hasDraw) {  
-                        resolve(theTestPage.drawHappened);
-                    } else {
+                    if (component.draw.drawHappened < numDraws) {                          
                         setTimeout(function () {
                             waitForDraw(done);
-                        });
+                        }, 0);
+                    } else {
+                        // wait a little bit before resolving the promise
+                        // Make sure the DOM changes have been applied.
+                        setTimeout(function () {
+                            resolve(theTestPage.drawHappened);
+                        }, 50);
                     }
                 }());
 
