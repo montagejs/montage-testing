@@ -25,7 +25,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 if (!this.iframe) {
                     this.iframe = global.document.createElement("iframe");
                     this.iframe.id = "testpage";
-                    
+
                     this.iframe.style.width = '100%';
                     this.iframe.style.height = '100%';
                     this.iframe.style.left = '75%';
@@ -94,7 +94,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                 pageFirstDraw.resolve = resolve;
                 pageFirstDraw.reject = reject;
             });
-            
+
             var testName = test.testName,
                 testCallback = test.callback,
                 timeoutLength = test.timeoutLength,
@@ -112,7 +112,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             promiseForFrameLoad.then( function(frame) {
                 // implement global function that montage is looking for at load
                 // this is little bit ugly and I'd like to find a better solution
-                
+
                 self.global.montageWillLoad = function() {
                     var firstDraw = true;
                     self.require.async("montage/ui/component").then(function (COMPONENT) {
@@ -214,13 +214,13 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
                     self.iframe.removeEventListener("load", callback, true);
                 }
             };
-            
+
             if (options.src) {
                 src = options.src;
             } else {
                 src = options.directory + options.testName + ".html";
             }
-            
+
             if (options.newWindow) {
                 self.testWindow = global.open(src, "test-global");
                 global.addEventListener("unload", function() {
@@ -292,7 +292,7 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
                 (function waitForDraw(done) {
                     var hasDraw = theTestPage.drawHappened >= numDraws;
-                    if (hasDraw) {  
+                    if (hasDraw) {
                         resolve(theTestPage.drawHappened);
                     } else {
                         setTimeout(function () {
@@ -327,10 +327,10 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
 
             return new Promise(function (resolve, reject) {
                 (function waitForDraw(done) {
-                    if (component.draw.drawHappened < numDraws) {                          
-                        setTimeout(function () {
-                            waitForDraw(done);
-                        }, 0);
+                  
+                    var hasDraw = component.draw.drawHappened === numDraws;
+                    if (hasDraw) {
+                        resolve(theTestPage.drawHappened);
                     } else {
                         // wait a little bit before resolving the promise
                         // Make sure the DOM changes have been applied.
@@ -537,7 +537,6 @@ var TestPageLoader = exports.TestPageLoader = Montage.specialize( {
             var doc = this.document,
                 simulatedEvent = doc.createEvent("CustomEvent"),
                 fakeEvent,
-                event,
                 touch,
                 eventManager,
                 // We need to dispatch a fake event through the event manager
