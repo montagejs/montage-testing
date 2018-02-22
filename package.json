@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "jasmine-console-reporter": "^1.2.7",
-    "jasmine-core": "^2.5.2",
+    "jasmine-core": "^3.0.0",
     "js-beautify": "^1.6.11",
     "montage": "^17.0.7"
   },
