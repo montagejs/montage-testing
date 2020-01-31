@@ -70,7 +70,9 @@ exports.run = function run (suiteRequire, modules) {
     // Filter node:false
     modules = modules.filter(function (module) {
         if (typeof module === "object") {
-            if (module.node === false && typeof process !== "undefined") {
+            if ((module.node === false || module.worker === false) && typeof importScripts !== "undefined") {
+                return false;
+            } else if (module.node === false && typeof process !== "undefined") {
                 return false;
             } else if (module.browser === false && typeof window !== "undefined") {
                 return false;
